@@ -1,18 +1,23 @@
-## Dataset
+# Dataset Instructions
 
-Due to GitHub's 100 MB file size limit, the datasets are hosted on Google Drive.
+The datasets are not stored in this repository because they exceed GitHub's 100 MB file size limit.
 
-### Download
+## Download
 
 Raw Dataset:
-https://drive.google.com/...
+<Google Drive Link>
 
 Processed Dataset:
-https://drive.google.com/...
+<Google Drive Link>
 
-After downloading:
+## Folder Structure
 
-Place the files in:
+data/
+├── raw/
+│   ├── Accident_Information.csv
+│   └── Vehicle_Information.csv
+│
+└── output/
+    └── processed_data.csv
 
-data/raw/
-data/output/
+Download the files and place them in the folders shown above before running the notebooks.
