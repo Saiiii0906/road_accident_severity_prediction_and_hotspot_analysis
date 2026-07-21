@@ -13,17 +13,11 @@ Processed Dataset:
 ## Folder Structure
 
 data/
-
 ├── raw/
-
 │   ├── Accident_Information.csv
-
 │   └── Vehicle_Information.csv
-
 │
-
 └── output/
-
     └── processed_data.csv
     
 
