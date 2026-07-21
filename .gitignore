@@ -1,0 +1,28 @@
+# ==============================
+# Raw datasets
+# ==============================
+
+data/raw/*.csv
+
+# Ignore processed datasets
+data/output/*.csv
+
+# Keep folder structure
+!data/raw/.gitkeep
+!data/output/.gitkeep
+
+# Keep metadata
+!data/output/feature_metadata.csv
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/

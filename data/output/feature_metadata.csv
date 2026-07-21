@@ -1,0 +1,131 @@
+feature_name,data_type,description,encoding_used,missing_value_strategy
+Accident_Index,object,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Number,float64,Sourced from raw UK Road Safety data,None,Median imputation
+2nd_Road_Number,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Accident_Severity,object,Sourced from raw UK Road Safety data,None,No missing values
+Did_Police_Officer_Attend_Scene_of_Accident,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Latitude,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Local_Authority_(District),int64,Sourced from raw UK Road Safety data,Label,No missing values
+Local_Authority_(Highway),int64,Sourced from raw UK Road Safety data,Label,No missing values
+Location_Easting_OSGR,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Location_Northing_OSGR,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Longitude,float64,Sourced from raw UK Road Safety data,None,Median imputation
+LSOA_of_Accident_Location,int64,Sourced from raw UK Road Safety data,Label,'Unknown' category
+Number_of_Casualties,int64,Sourced from raw UK Road Safety data,None,No missing values
+Number_of_Vehicles,int64,Sourced from raw UK Road Safety data,None,No missing values
+Pedestrian_Crossing-Human_Control,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Pedestrian_Crossing-Physical_Facilities,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Police_Force,int64,Sourced from raw UK Road Safety data,Label,No missing values
+Speed_limit,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Year,float64,Calendar year extracted from accident date,None,No missing values
+Age_of_Vehicle_mean,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Age_of_Vehicle_max,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Engine_Capacity_.CC._mean,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Engine_Capacity_.CC._max,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Driver_IMD_Decile_mean,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Driver_IMD_Decile_max,float64,Sourced from raw UK Road Safety data,None,Median imputation
+Number_of_Vehicles_Involved,float64,Vehicle count aggregated from Vehicle_Information per accident,None,Median imputation
+Vehicle_Type_Diversity,float64,Distinct vehicle types involved in the accident,None,Median imputation
+Dominant_Vehicle_Type,int64,Most common vehicle type involved in the accident,Label,'Unknown' category
+Month,float64,Calendar month (1-12) extracted from accident date,None,No missing values
+Day,float64,Day of month extracted from accident date,None,No missing values
+Hour,float64,Hour of day (0-23) extracted from accident time,None,No missing values
+Is_Weekend,int64,1 if accident occurred Sat/Sun,None,No missing values
+Is_Rush_Hour,int64,"1 if Hour falls in conventional commute windows (7-9, 16-18)",None,No missing values
+Is_Peak_Hour,int64,1 if Hour is among the 3 most frequent accident hours in this dataset,None,No missing values
+Is_Night,int64,1 if Hour is 20:00-05:59,None,No missing values
+Is_Morning,int64,1 if Hour is 06:00-11:59,None,No missing values
+Is_Evening,int64,1 if Hour is 17:00-19:59,None,No missing values
+Bad_Weather_Flag,int64,"1 if Weather_Conditions indicates rain, snow, or fog",None,No missing values
+Poor_Visibility_Flag,int64,1 if Light_Conditions indicates darkness,None,No missing values
+Road_Risk_Score,float64,"Heuristic weighted composite of speed limit, weather, visibility, surface",None,No missing values
+InScotland_No,int64,Sourced from raw UK Road Safety data,None,No missing values
+InScotland_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+InScotland_Yes,int64,Sourced from raw UK Road Safety data,None,No missing values
+Urban_or_Rural_Area_Rural,int64,Sourced from raw UK Road Safety data,None,No missing values
+Urban_or_Rural_Area_Unallocated,int64,Sourced from raw UK Road Safety data,None,No missing values
+Urban_or_Rural_Area_Urban,int64,Sourced from raw UK Road Safety data,None,No missing values
+Traffic_Density_Indicator_Single_Vehicle,int64,Sourced from raw UK Road Safety data,None,No missing values
+Traffic_Density_Indicator_Two_Vehicle,int64,Sourced from raw UK Road Safety data,None,No missing values
+Traffic_Density_Indicator_Moderate,int64,Sourced from raw UK Road Safety data,None,No missing values
+Traffic_Density_Indicator_High_Density,int64,Sourced from raw UK Road Safety data,None,No missing values
+Season_Autumn,int64,Sourced from raw UK Road Safety data,None,No missing values
+Season_Spring,int64,Sourced from raw UK Road Safety data,None,No missing values
+Season_Summer,int64,Sourced from raw UK Road Safety data,None,No missing values
+Season_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Season_Winter,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_Dual Carriageway,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_One Way Street,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_Roundabout,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_Single Carriageway,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_Slip Road,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Type_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Dry,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Flood Over 3Cm. Deep,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Frost Or Ice,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Snow,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Road_Surface_Conditions_Wet Or Damp,int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_A,int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_A(M),int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_B,int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_C,int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_Motorway,int64,Sourced from raw UK Road Safety data,None,No missing values
+1st_Road_Class_Unclassified,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Darkness - Lighting Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Darkness - Lights Lit,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Darkness - Lights Unlit,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Darkness - No Lighting,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Daylight,int64,Sourced from raw UK Road Safety data,None,No missing values
+Light_Conditions_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Authorised Person,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Auto Traffic Signal,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Give Way Or Uncontrolled,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Not At Junction Or Within 20 Metres,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Stop Sign,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Control_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Friday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Monday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Saturday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Sunday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Thursday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Tuesday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Day_of_Week_Wednesday,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_A,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_A(M),int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_B,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_C,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_Motorway,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_Unclassified,int64,Sourced from raw UK Road Safety data,None,No missing values
+2nd_Road_Class_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Friday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Monday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Saturday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Sunday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Thursday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Tuesday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weekday_Wednesday,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Fine + High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Fine No High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Fog Or Mist,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Other,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Raining + High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Raining No High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Snowing + High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Snowing No High Winds,int64,Sourced from raw UK Road Safety data,None,No missing values
+Weather_Conditions_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Crossroads,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Mini-Roundabout,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_More Than 4 Arms (Not Roundabout),int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Not At Junction Or Within 20 Metres,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Other Junction,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Private Drive Or Entrance,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Roundabout,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Slip Road,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_T Or Staggered Junction,int64,Sourced from raw UK Road Safety data,None,No missing values
+Junction_Detail_Unknown,int64,Sourced from raw UK Road Safety data,None,No missing values
+Number_of_Casualties_Outlier,bool,Sourced from raw UK Road Safety data,None,No missing values
+Age_of_Vehicle_mean_Outlier,bool,Sourced from raw UK Road Safety data,None,No missing values
+Road_Risk_Score_Outlier,bool,Sourced from raw UK Road Safety data,None,No missing values
+Number_of_Vehicles_Outlier,bool,Sourced from raw UK Road Safety data,None,No missing values
+Speed_limit_Outlier,bool,Sourced from raw UK Road Safety data,None,No missing values
