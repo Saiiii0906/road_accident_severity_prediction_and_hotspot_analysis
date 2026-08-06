@@ -1,0 +1,33 @@
+{
+  "clusters": [
+    {
+      "cluster_id": "hotspot-001",
+      "center": {"latitude": 51.5074, "longitude": -0.1278},
+      "radius_meters": 250.0,
+      "accident_count": 34,
+      "severity_breakdown": {"slight": 20, "serious": 11, "fatal": 3},
+      "dominant_contributing_factor": "excessive_speed",
+      "risk_level": "High"
+    },
+    {
+      "cluster_id": "hotspot-002",
+      "center": {"latitude": 53.4808, "longitude": -2.2426},
+      "radius_meters": 180.0,
+      "accident_count": 21,
+      "severity_breakdown": {"slight": 14, "serious": 6, "fatal": 1},
+      "dominant_contributing_factor": "wet_road_surface",
+      "risk_level": "Medium"
+    },
+    {
+      "cluster_id": "hotspot-003",
+      "center": {"latitude": 52.4862, "longitude": -1.8904},
+      "radius_meters": 300.0,
+      "accident_count": 12,
+      "severity_breakdown": {"slight": 9, "serious": 3, "fatal": 0},
+      "dominant_contributing_factor": "poor_visibility",
+      "risk_level": "Low"
+    }
+  ],
+  "total_accidents_considered": 67,
+  "generated_at": "2026-01-15T10:30:00Z"
+}

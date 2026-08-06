@@ -1,0 +1,11 @@
+{
+  "predicted_severity": "serious",
+  "confidence": 0.72,
+  "class_probabilities": [
+    {"severity": "slight", "probability": 0.18},
+    {"severity": "serious", "probability": 0.72},
+    {"severity": "fatal", "probability": 0.10}
+  ],
+  "model_version": "severity-rf-mock-v1",
+  "predicted_at": "2026-01-15T10:30:00Z"
+}

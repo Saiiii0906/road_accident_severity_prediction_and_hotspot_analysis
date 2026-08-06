@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "filters": {
+      "date_from": "2026-01-01",
+      "date_to": "2026-01-31",
+      "local_authority": null
+    },
+    "total_accidents": 482,
+    "severity_breakdown": {"slight": 320, "serious": 140, "fatal": 22},
+    "top_contributing_factors": [
+      "excessive_speed",
+      "wet_road_surface",
+      "poor_visibility",
+      "driver_distraction"
+    ],
+    "trend": [
+      {
+        "period_start": "2026-01-01",
+        "total_accidents": 110,
+        "severity_breakdown": {"slight": 75, "serious": 30, "fatal": 5}
+      },
+      {
+        "period_start": "2026-01-08",
+        "total_accidents": 128,
+        "severity_breakdown": {"slight": 85, "serious": 37, "fatal": 6}
+      },
+      {
+        "period_start": "2026-01-15",
+        "total_accidents": 119,
+        "severity_breakdown": {"slight": 80, "serious": 34, "fatal": 5}
+      },
+      {
+        "period_start": "2026-01-22",
+        "total_accidents": 125,
+        "severity_breakdown": {"slight": 80, "serious": 39, "fatal": 6}
+      }
+    ],
+    "generated_at": "2026-01-15T10:30:00Z"
+  },
+  "export": {
+    "report_id": "mock-report-000001",
+    "format": "csv",
+    "download_url": "https://example.com/reports/mock-report-000001.csv",
+    "expires_at": "2026-01-22T10:30:00Z"
+  }
+}
