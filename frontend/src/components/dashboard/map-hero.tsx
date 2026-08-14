@@ -14,8 +14,8 @@ export function MapHero() {
               </span>
               <h2 className="mt-5 text-xl text-foreground">Network hotspot map</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Spatial clustering of high-severity incidents across the monitored road
-                network, with corridor and junction level drill-down.
+                Spatial clustering of high-severity incidents across the monitored road network,
+                with corridor and junction level drill-down.
               </p>
               <Button variant="outline" size="sm" className="mt-6" disabled>
                 Interactive Map Coming Next Sprint

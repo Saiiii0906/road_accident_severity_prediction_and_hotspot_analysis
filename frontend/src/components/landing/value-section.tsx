@@ -3,10 +3,7 @@ import { VALUE_PILLARS } from "@/constants/content";
 
 export function ValueSection() {
   return (
-    <section
-      aria-labelledby="why-title"
-      className="border-t border-border py-20"
-    >
+    <section aria-labelledby="why-title" className="border-t border-border py-20">
       <h2 id="why-title" className="max-w-2xl text-3xl text-foreground sm:text-4xl">
         Why this platform
       </h2>

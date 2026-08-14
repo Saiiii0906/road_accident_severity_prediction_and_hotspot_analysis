@@ -46,10 +46,7 @@ export function AppNavbar({ onOpenMobileNav }: AppNavbarProps) {
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />
-          <span
-            className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-accent"
-            aria-hidden
-          />
+          <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
         </Button>
         <ThemeToggle />
         <button

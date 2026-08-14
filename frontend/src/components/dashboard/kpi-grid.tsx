@@ -32,12 +32,8 @@ export function KpiGrid() {
                 <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
                   {kpi.label}
                 </p>
-                <p className="text-3xl leading-none font-bold text-foreground">
-                  {kpi.value}
-                </p>
-                <p
-                  className={`flex items-center gap-1.5 text-xs ${trendColor[kpi.trend]}`}
-                >
+                <p className="text-3xl leading-none font-bold text-foreground">{kpi.value}</p>
+                <p className={`flex items-center gap-1.5 text-xs ${trendColor[kpi.trend]}`}>
                   <Icon className="h-3.5 w-3.5" aria-hidden />
                   {kpi.delta}
                   <span className="text-muted-foreground">vs last month</span>

@@ -1,13 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function LoadingSkeleton({
-  rows = 3,
-  className,
-}: {
-  rows?: number;
-  className?: string;
-}) {
+export function LoadingSkeleton({ rows = 3, className }: { rows?: number; className?: string }) {
   return (
     <div className={cn("space-y-3", className)} aria-hidden>
       {Array.from({ length: rows }).map((_, index) => (
@@ -25,10 +19,7 @@ export function LoadingSkeleton({
 
 export function CardSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn("space-y-3 rounded-xl border border-border p-5", className)}
-      aria-hidden
-    >
+    <div className={cn("space-y-3 rounded-xl border border-border p-5", className)} aria-hidden>
       <Skeleton className="h-3 w-24" />
       <Skeleton className="h-8 w-28" />
       <Skeleton className="h-3 w-32" />
@@ -38,10 +29,7 @@ export function CardSkeleton({ className }: { className?: string }) {
 
 export function MapSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn("rounded-xl border border-border p-4", className)}
-      aria-hidden
-    >
+    <div className={cn("rounded-xl border border-border p-4", className)} aria-hidden>
       <Skeleton className="h-full min-h-[320px] w-full rounded-lg" />
     </div>
   );
@@ -60,13 +48,7 @@ export function ChartSkeleton({ className }: { className?: string }) {
   );
 }
 
-export function TableSkeleton({
-  rows = 5,
-  className,
-}: {
-  rows?: number;
-  className?: string;
-}) {
+export function TableSkeleton({ rows = 5, className }: { rows?: number; className?: string }) {
   return (
     <div className={cn("space-y-2", className)} aria-hidden>
       {Array.from({ length: rows }).map((_, index) => (
@@ -80,13 +62,7 @@ export function TableSkeleton({
   );
 }
 
-export function PlaceholderBlock({
-  label,
-  className,
-}: {
-  label: string;
-  className?: string;
-}) {
+export function PlaceholderBlock({ label, className }: { label: string; className?: string }) {
   return (
     <div
       className={cn(

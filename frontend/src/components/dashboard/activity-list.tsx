@@ -6,10 +6,7 @@ export function ActivityList() {
   return (
     <Card className="h-full border-border bg-card shadow-none">
       <CardHeader className="border-b border-border">
-        <SectionHeader
-          title="Recent activity"
-          description="Latest runs in this workspace."
-        />
+        <SectionHeader title="Recent activity" description="Latest runs in this workspace." />
       </CardHeader>
       <CardContent className="p-5">
         <ul className="divide-y divide-border">

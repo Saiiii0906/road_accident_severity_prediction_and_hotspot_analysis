@@ -11,9 +11,7 @@ export function SiteFooter() {
             <ShieldAlert className="h-4 w-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold tracking-tight text-foreground">
-              {APP_NAME}
-            </p>
+            <p className="truncate text-sm font-bold tracking-tight text-foreground">{APP_NAME}</p>
             <small className="text-muted-foreground">
               Traffic intelligence platform — {APP_VERSION}
             </small>

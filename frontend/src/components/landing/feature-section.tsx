@@ -9,9 +9,7 @@ export function FeatureSection() {
   return (
     <section aria-labelledby="modules-title" className="py-20">
       <div className="max-w-2xl">
-        <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
-          Modules
-        </p>
+        <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">Modules</p>
         <h2 id="modules-title" className="mt-4 text-3xl text-foreground sm:text-4xl">
           Four analysis modules, one workspace
         </h2>

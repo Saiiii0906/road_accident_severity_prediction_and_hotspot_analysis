@@ -71,9 +71,8 @@ function Landing() {
             Improve Road Safety.
           </h1>
           <p className="mt-8 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Use AI to predict accident severity, discover accident hotspots, assess road
-            risks, and generate infrastructure recommendations for smarter and safer
-            transportation systems.
+            Use AI to predict accident severity, discover accident hotspots, assess road risks, and
+            generate infrastructure recommendations for smarter and safer transportation systems.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" className="transition-transform hover:-translate-y-0.5">

@@ -10,10 +10,7 @@ export function Breadcrumbs() {
     <nav aria-label="Breadcrumb" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
         <li className="shrink-0">
-          <Link
-            to="/"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <Link to="/" className="text-muted-foreground transition-colors hover:text-foreground">
             {APP_NAME}
           </Link>
         </li>
