@@ -26,3 +26,4 @@ __pycache__/
 
 # VS Code
 .vscode/
+data/output/uk_hotspot_map.html
