@@ -1,7 +1,10 @@
 import type { Control } from "react-hook-form";
 import { SectionHeader } from "@/components/common/section-header";
-import { DAYS_OF_WEEK } from "@/constants/severity";
-import { DateTimeField, NumberField, SelectField } from "@/components/severity/form-fields";
+import {
+  DateTimeField,
+  NumberField,
+  SelectField,
+} from "@/components/severity/form-fields";
 import type { SeverityFormValues } from "@/components/severity/severity-schema";
 
 export function AccidentContextSection({ control }: { control: Control<SeverityFormValues> }) {
@@ -18,7 +21,7 @@ export function AccidentContextSection({ control }: { control: Control<SeverityF
           control={control}
           name="dayOfWeek"
           label="Day of week"
-          options={DAYS_OF_WEEK}
+          options={["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]}
         />
         <NumberField control={control} name="vehicles" label="Vehicles involved" min={1} max={50} />
         <NumberField
@@ -28,6 +31,20 @@ export function AccidentContextSection({ control }: { control: Control<SeverityF
           min={0}
           max={200}
           helper="People injured or killed, excluding uninjured occupants."
+        />
+        <NumberField
+          control={control}
+          name="latitude"
+          label="Latitude"
+          min={-90}
+          max={90}
+        />
+        <NumberField
+          control={control}
+          name="longitude"
+          label="Longitude"
+          min={-180}
+          max={180}
         />
       </div>
     </section>

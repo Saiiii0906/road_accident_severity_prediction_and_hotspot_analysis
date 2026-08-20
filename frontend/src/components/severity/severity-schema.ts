@@ -26,6 +26,14 @@ export const severityFormSchema = z.object({
   lightConditions: required("Select light conditions"),
   visibility: required("Select visibility"),
   areaType: required("Select urban or rural"),
+  latitude: z.coerce
+    .number({ invalid_type_error: "Enter a number" })
+    .min(-90, { message: "Latitude must be between -90 and 90" })
+    .max(90, { message: "Latitude must be between -90 and 90" }),
+  longitude: z.coerce
+    .number({ invalid_type_error: "Enter a number" })
+    .min(-180, { message: "Longitude must be between -180 and 180" })
+    .max(180, { message: "Longitude must be between -180 and 180" }),
 });
 
 export type SeverityFormValues = z.infer<typeof severityFormSchema>;
@@ -36,6 +44,8 @@ export const severityFormDefaults: Partial<SeverityFormValues> = {
   areaType: "urban",
   trafficDensity: "moderate",
   visibility: "good",
+  latitude: 0,
+  longitude: 0,
 };
 
 export function toPredictionRequest(values: SeverityFormValues): SeverityPredictionRequest {
@@ -54,5 +64,7 @@ export function toPredictionRequest(values: SeverityFormValues): SeverityPredict
     light_conditions: values.lightConditions,
     visibility: values.visibility,
     area_type: values.areaType,
+    latitude: values.latitude,
+    longitude: values.longitude,
   };
 }
