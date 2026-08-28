@@ -26,3 +26,9 @@ __pycache__/
 
 # VS Code
 .vscode/
+
+# Student C - large GNN dataset
+student_C/gnn_accident_dataset.csv
+
+# Student C - large Processed dataset
+student_C/processed_data.csv
