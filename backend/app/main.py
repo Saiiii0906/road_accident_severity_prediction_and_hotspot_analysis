@@ -41,14 +41,15 @@ API surface.
 from app.config import settings
 from app.services.severity_service import SeverityModelManager
 from app.services.hotspot_service import HotspotDataManager
+from app.services.risk_service import RiskDataManager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown.
 
-    Loads the Student A Machine Learning model artifacts and Student B
-    DBSCAN hotspot summary artifacts once at startup and keeps them resident
-    in memory.
+    Loads the Student A Machine Learning model artifacts, Student B
+    DBSCAN hotspot summary artifacts, and Student C GNN road risk predictions
+    once at startup and keeps them resident in memory.
     """
     logger.info("Application Starting: loading model artifacts and data...")
     try:
@@ -62,6 +63,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Student B Hotspot Data Manager loaded and ready.")
     except Exception as exc:
         logger.error("Critical: Could not load Student B hotspot data at startup: %s", exc)
+        raise exc
+
+    try:
+        RiskDataManager().load()
+        logger.info("Student C Risk Data Manager loaded and ready.")
+    except Exception as exc:
+        logger.error("Critical: Could not load Student C risk data at startup: %s", exc)
         raise exc
 
     logger.info("Application Started")

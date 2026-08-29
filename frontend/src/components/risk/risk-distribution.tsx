@@ -17,7 +17,7 @@ export function RiskDistribution({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Risk distribution"
-          description="How the demo record set spreads across risk bands. Illustrative values only."
+          description="Distribution of road segments across predicted risk bands."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">
@@ -48,7 +48,7 @@ export function RiskDistribution({
                   <div
                     className="h-2 w-full overflow-hidden rounded-full bg-muted"
                     role="img"
-                    aria-label={`${display.label}: ${slice.share} percent of demo records`}
+                    aria-label={`${display.label}: ${slice.share} percent of road segments`}
                   >
                     <div
                       className={cn(

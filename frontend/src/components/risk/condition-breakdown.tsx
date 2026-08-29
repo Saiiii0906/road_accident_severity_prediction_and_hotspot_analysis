@@ -8,7 +8,7 @@ import type { ConditionBreakdown as Breakdown } from "@/lib/api/risk";
 
 /**
  * Shared comparative presentation used by both the road-condition and weather
- * analysis sections. Values come from the isolated demo dataset.
+ * analysis sections. Values come from the connected road risk model.
  */
 export function ConditionBreakdownCard({
   title,
@@ -66,7 +66,7 @@ export function ConditionBreakdownCard({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Risk index {condition.riskIndex} · {condition.accidentShare}% of demo records
+                      Risk index {condition.riskIndex} · {condition.accidentShare}% of road segments
                       — {condition.note}
                     </p>
                   </li>

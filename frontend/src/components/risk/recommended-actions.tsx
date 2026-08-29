@@ -18,7 +18,7 @@ export function RecommendedActions({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Recommended focus areas"
-          description="Intervention-oriented presentation layer based on the demo dataset."
+          description="Intervention-oriented recommendations based on predicted road risk."
         />
       </CardHeader>
       <CardContent className="p-5">

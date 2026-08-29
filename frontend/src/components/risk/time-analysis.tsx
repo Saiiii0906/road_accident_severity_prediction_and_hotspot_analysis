@@ -17,7 +17,7 @@ export function TimeAnalysis({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Time-of-day analysis"
-          description="Relative risk index across daily periods in the demo record set."
+          description="Relative risk index across daily periods."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

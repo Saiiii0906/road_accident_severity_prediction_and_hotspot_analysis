@@ -27,7 +27,7 @@ export function PriorityInsights({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Priority insights"
-          description="Interface demonstration only — final insights will come from the connected model."
+          description="Priority insights derived from the connected road risk model."
         />
       </CardHeader>
       <CardContent className="p-5">

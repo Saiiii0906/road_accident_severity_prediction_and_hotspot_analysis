@@ -12,7 +12,7 @@ export function RiskFactors({ factors, isLoading }: { factors: RiskFactor[]; isL
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Key risk factors"
-          description="Demonstration labels ranked by relative contribution — not model output yet."
+          description="Risk factors ranked by their relative contribution to predicted road risk."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

@@ -103,6 +103,20 @@ class Settings(BaseSettings):
             return default_path
         return self.PROJECT_ROOT / "student_B" / "results" / "hotspot_summary.csv"
 
+    STUDENT_C_RISK_PATH_ENV: str | None = Field(
+        default=None,
+        alias="STUDENT_C_RISK_PATH",
+    )
+
+    @property
+    def STUDENT_C_RISK_PATH(self) -> Path:
+        """Path to Student C GNN road risk predictions JSON."""
+        if self.STUDENT_C_RISK_PATH_ENV:
+            p = Path(self.STUDENT_C_RISK_PATH_ENV)
+            return p if p.is_absolute() else self.PROJECT_ROOT / p
+        return self.PROJECT_ROOT / "student_C" / "gnn_risk_predictions.json"
+
+
 
 
 
