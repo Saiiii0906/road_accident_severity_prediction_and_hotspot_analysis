@@ -4,7 +4,7 @@
 
 data/raw/*.csv
 
-# Ignore processed datasets
+## Ignore processed datasets
 data/output/*.csv
 
 # Keep folder structure
@@ -13,6 +13,10 @@ data/output/*.csv
 
 # Keep metadata
 !data/output/feature_metadata.csv
+
+# Keep compact Student B production artifact
+!data/output/hotspot_summary.csv
+
 
 # macOS
 .DS_Store
@@ -32,3 +36,16 @@ student_C/gnn_accident_dataset.csv
 
 # Student C - large Processed dataset
 student_C/processed_data.csv
+
+# Student A - large ML artifacts
+student_A/models/accident_severity_model.pkl
+student_A/models/severity_encoder.pkl
+
+# Student A - large training notebook
+student_A/Accident_Severity_Prediction.ipynb
+
+# Student B - generated map
+data/output/uk_hotspot_map.html
+
+# Keep compact Student B production artifact
+!data/output/hotspot_summary.csv

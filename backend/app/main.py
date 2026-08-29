@@ -38,16 +38,32 @@ API surface.
 - Generate aggregate accident reports and export them as files
 """
 
+from app.config import settings
+from app.services.severity_service import SeverityModelManager
+from app.services.hotspot_service import HotspotDataManager
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown.
 
-    Replaces the deprecated `@app.on_event("startup"/"shutdown")` pattern.
-    Code before `yield` runs on startup; code after `yield` runs on
-    shutdown. No resources are acquired here today (the mock service
-    layer needs none), but this is the single place to add them — e.g. a
-    database connection pool or a loaded ML model — when they exist.
+    Loads the Student A Machine Learning model artifacts and Student B
+    DBSCAN hotspot summary artifacts once at startup and keeps them resident
+    in memory.
     """
+    logger.info("Application Starting: loading model artifacts and data...")
+    try:
+        SeverityModelManager.get_instance().load()
+        logger.info("Student A Severity Model loaded and ready.")
+    except Exception as exc:
+        logger.error("Warning: Could not pre-load Student A model at startup: %s", exc)
+
+    try:
+        HotspotDataManager().load()
+        logger.info("Student B Hotspot Data Manager loaded and ready.")
+    except Exception as exc:
+        logger.error("Critical: Could not load Student B hotspot data at startup: %s", exc)
+        raise exc
+
     logger.info("Application Started")
     yield
     logger.info("Application Stopped")
@@ -85,10 +101,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount routes at root and /api for full compatibility with frontend / direct consumers
 app.include_router(severity_router)
+app.include_router(severity_router, prefix=settings.API_PREFIX)
 app.include_router(hotspot_router)
+app.include_router(hotspot_router, prefix=settings.API_PREFIX)
 app.include_router(risk_router)
+app.include_router(risk_router, prefix=settings.API_PREFIX)
 app.include_router(report_router)
+app.include_router(report_router, prefix=settings.API_PREFIX)
+
 
 @app.get(
     "/",

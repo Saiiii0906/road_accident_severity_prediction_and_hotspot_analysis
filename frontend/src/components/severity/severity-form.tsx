@@ -27,9 +27,14 @@ export function SeverityForm({ isSubmitting, onSubmit, onReset }: SeverityFormPr
     mode: "onBlur",
   });
 
+  const onFormSubmit = (values: SeverityFormValues) => {
+    onSubmit(values);
+  };
+
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+      <form onSubmit={form.handleSubmit(onFormSubmit)} noValidate>
         <Card className="border-border bg-card shadow-none">
           <CardContent className="space-y-8 p-5 sm:p-6">
             <AccidentContextSection control={form.control} />

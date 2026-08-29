@@ -54,25 +54,56 @@ class Settings(BaseSettings):
 
     @property
     def BASE_DIR(self) -> Path:
-        """Directory containing this config file (backend/app/).
-
-        Deliberately a property rather than a pydantic field: fields can
-        be overridden by environment variables, and a stray BASE_DIR
-        env var would silently break every path derived from it. Always
-        computing this from `__file__` is what makes the project portable
-        across machines instead of depending on where it happens to be
-        checked out.
-        """
+        """Directory containing this config file (backend/app/)."""
         return Path(__file__).resolve().parent
 
     @property
-    def MOCK_DATA_DIR(self) -> Path:
-        """Directory containing mock JSON fixtures (backend/app/mock_data/).
+    def PROJECT_ROOT(self) -> Path:
+        """Root workspace directory."""
+        return self.BASE_DIR.parent.parent
 
-        Also a property, for the same reason as BASE_DIR: it must always
-        be derived, never accidentally overridden via the environment.
-        """
+    @property
+    def MOCK_DATA_DIR(self) -> Path:
+        """Directory containing mock JSON fixtures (backend/app/mock_data/)."""
         return self.BASE_DIR / "mock_data"
+
+    @property
+    def STUDENT_A_MODELS_DIR(self) -> Path:
+        """Directory containing Student A model artifacts."""
+        return self.PROJECT_ROOT / "student_A" / "models"
+
+    @property
+    def STUDENT_A_MODEL_PATH(self) -> Path:
+        """Path to Student A Random Forest model binary."""
+        return self.STUDENT_A_MODELS_DIR / "accident_severity_model.pkl"
+
+    @property
+    def STUDENT_A_ENCODER_PATH(self) -> Path:
+        """Path to Student A LabelEncoder binary."""
+        return self.STUDENT_A_MODELS_DIR / "severity_encoder.pkl"
+
+    @property
+    def STUDENT_A_FEATURES_PATH(self) -> Path:
+        """Path to Student A 138-features list pickle."""
+        return self.STUDENT_A_MODELS_DIR / "features.pkl"
+
+    STUDENT_B_HOTSPOT_PATH_ENV: str | None = Field(
+        default=None,
+        alias="STUDENT_B_HOTSPOT_PATH",
+    )
+
+    @property
+    def STUDENT_B_HOTSPOT_PATH(self) -> Path:
+        """Path to Student B DBSCAN hotspot summary CSV."""
+        if self.STUDENT_B_HOTSPOT_PATH_ENV:
+            p = Path(self.STUDENT_B_HOTSPOT_PATH_ENV)
+            return p if p.is_absolute() else self.PROJECT_ROOT / p
+        default_path = self.PROJECT_ROOT / "data" / "output" / "hotspot_summary.csv"
+        if default_path.exists():
+            return default_path
+        return self.PROJECT_ROOT / "student_B" / "results" / "hotspot_summary.csv"
+
+
 
 
 @lru_cache

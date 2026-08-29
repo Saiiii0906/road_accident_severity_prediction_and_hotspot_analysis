@@ -83,28 +83,23 @@ export const SEVERITY_DISPLAY: Record<
   SeverityLevel,
   { label: string; description: string; className: string; barClassName: string }
 > = {
-  low: {
-    label: "Low",
-    description: "Minor outcome expected — slight or no injury.",
+  slight: {
+    label: "Slight",
+    description: "Minor injuries or damage; low medical intervention required.",
     className: "border-success/30 bg-success/10 text-success",
     barClassName: "bg-success",
   },
-  moderate: {
-    label: "Moderate",
-    description: "Injury likely but not life-threatening.",
+  serious: {
+    label: "Serious",
+    description: "Severe injury outcome expected requiring hospitalisation or urgent care.",
     className: "border-warning/30 bg-warning/10 text-warning",
     barClassName: "bg-warning",
   },
-  high: {
-    label: "High",
-    description: "Serious injury outcome expected.",
-    className: "border-danger/30 bg-danger/10 text-danger",
-    barClassName: "bg-danger",
-  },
   fatal: {
     label: "Fatal",
-    description: "Fatal outcome indicated for this scenario.",
+    description: "Fatal outcome indicated for this collision scenario.",
     className: "border-danger/40 bg-danger/15 text-danger",
     barClassName: "bg-danger",
   },
 };
+
