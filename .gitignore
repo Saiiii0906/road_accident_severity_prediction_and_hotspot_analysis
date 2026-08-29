@@ -30,14 +30,22 @@ __pycache__/
 
 # VS Code
 .vscode/
-data/output/uk_hotspot_map.html
 
-# ==============================
-# Large ML artifacts
-# ==============================
+# Student C - large GNN dataset
+student_C/gnn_accident_dataset.csv
 
+# Student C - large Processed dataset
+student_C/processed_data.csv
+
+# Student A - large ML artifacts
 student_A/models/accident_severity_model.pkl
 student_A/models/severity_encoder.pkl
 
-# Large training notebooks
+# Student A - large training notebook
 student_A/Accident_Severity_Prediction.ipynb
+
+# Student B - generated map
+data/output/uk_hotspot_map.html
+
+# Keep compact Student B production artifact
+!data/output/hotspot_summary.csv
