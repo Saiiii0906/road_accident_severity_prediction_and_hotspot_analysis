@@ -4,7 +4,7 @@
 
 data/raw/*.csv
 
-# Ignore processed datasets
+## Ignore processed datasets
 data/output/*.csv
 
 # Keep folder structure
@@ -13,6 +13,10 @@ data/output/*.csv
 
 # Keep metadata
 !data/output/feature_metadata.csv
+
+# Keep compact Student B production artifact
+!data/output/hotspot_summary.csv
+
 
 # macOS
 .DS_Store
@@ -27,3 +31,13 @@ __pycache__/
 # VS Code
 .vscode/
 data/output/uk_hotspot_map.html
+
+# ==============================
+# Large ML artifacts
+# ==============================
+
+student_A/models/accident_severity_model.pkl
+student_A/models/severity_encoder.pkl
+
+# Large training notebooks
+student_A/Accident_Severity_Prediction.ipynb
