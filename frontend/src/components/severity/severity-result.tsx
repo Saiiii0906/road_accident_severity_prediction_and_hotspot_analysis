@@ -50,15 +50,19 @@ export function SeverityResult({ result }: { result: SeverityPredictionResult })
         {probabilities.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-sm text-foreground">Class probabilities</h3>
-            {probabilities.map(([level, value]) => (
-              <div key={level} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{SEVERITY_DISPLAY[level].label}</span>
-                  <span>{toPercent(value)}%</span>
+            {probabilities.map(([level, value]) => {
+              const itemDisplay = SEVERITY_DISPLAY[level as keyof typeof SEVERITY_DISPLAY];
+              if (!itemDisplay) return null;
+              return (
+                <div key={level} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{itemDisplay.label}</span>
+                    <span>{toPercent(value)}%</span>
+                  </div>
+                  <Progress value={toPercent(value)} className="h-1.5" />
                 </div>
-                <Progress value={toPercent(value)} className="h-1.5" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : null}
 

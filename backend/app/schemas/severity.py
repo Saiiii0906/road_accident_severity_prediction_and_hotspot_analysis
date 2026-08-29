@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .common import (
     Coordinates,
@@ -16,27 +17,101 @@ from .common import (
 class SeverityPredictionRequest(BaseModel):
     """Conditions for a single accident, submitted for a severity prediction."""
 
-    location: Coordinates
-    road_type: RoadType
-    speed_limit: int = Field(..., ge=0, le=70, description="Posted speed limit in mph.")
-    weather_conditions: WeatherCondition
-    road_surface_conditions: RoadSurfaceCondition
-    light_conditions: LightCondition
-    urban_or_rural_area: UrbanOrRuralArea
-    number_of_vehicles: int = Field(..., ge=1, description="Vehicles involved in the accident.")
-    is_junction: bool = Field(
-        False, description="Whether the accident occurred at or near a junction."
+    model_config = ConfigDict(extra="ignore")
+
+    # Coordinates
+    latitude: Optional[float] = Field(
+        default=52.23759, description="Latitude in decimal degrees (WGS84)."
     )
-    occurred_at: datetime = Field(
-        ..., description="Date and time the accident occurred, used to derive time-based features."
+    longitude: Optional[float] = Field(
+        default=-1.362233, description="Longitude in decimal degrees (WGS84)."
+    )
+    location: Optional[Coordinates] = Field(
+        default=None, description="Optional nested coordinates object."
     )
 
-    @field_validator("occurred_at")
-    @classmethod
-    def occurred_at_not_in_future(cls, value: datetime) -> datetime:
-        if value > datetime.now(tz=value.tzinfo):
-            raise ValueError("occurred_at cannot be in the future")
-        return value
+    # Date / Time
+    accident_date: Optional[str] = Field(
+        default=None, description="Accident date (YYYY-MM-DD)."
+    )
+    accident_time: Optional[str] = Field(
+        default=None, description="Accident time (HH:MM)."
+    )
+    day_of_week: Optional[str] = Field(
+        default=None, description="Day of week name (e.g., Friday)."
+    )
+    occurred_at: Optional[datetime] = Field(
+        default=None, description="Timestamp when the accident occurred."
+    )
+
+    # Accident characteristics
+    number_of_vehicles: int = Field(
+        default=2, ge=1, le=50, description="Vehicles involved in the accident."
+    )
+    number_of_casualties: int = Field(
+        default=1, ge=0, le=200, description="Casualties resulting from the accident."
+    )
+    speed_limit: int = Field(
+        default=30, ge=0, le=120, description="Posted speed limit in mph/kph."
+    )
+
+    # Environmental and Road Conditions
+    road_type: Optional[str] = Field(
+        default="single_carriageway", description="Type of road."
+    )
+    road_surface_conditions: Optional[str] = Field(
+        default="dry", description="Road surface condition."
+    )
+    road_surface: Optional[str] = Field(
+        default=None, description="Alias for road_surface_conditions."
+    )
+    weather_conditions: Optional[str] = Field(
+        default="fine", description="Weather conditions."
+    )
+    weather: Optional[str] = Field(
+        default=None, description="Alias for weather_conditions."
+    )
+    light_conditions: Optional[str] = Field(
+        default="daylight", description="Lighting conditions."
+    )
+    urban_or_rural_area: Optional[str] = Field(
+        default="urban", description="Urban or rural area."
+    )
+    area_type: Optional[str] = Field(
+        default=None, description="Alias for urban_or_rural_area."
+    )
+
+    # Junction Details
+    is_junction: bool = Field(
+        default=False, description="Whether the accident occurred at or near a junction."
+    )
+    junction_control: Optional[str] = Field(
+        default="not_at_junction", description="Junction control type."
+    )
+    junction_detail: Optional[str] = Field(
+        default="not_at_junction", description="Junction detail."
+    )
+
+    # Fleet / vehicle aggregates (optional overrides)
+    age_of_vehicle_mean: Optional[float] = Field(
+        default=None, description="Mean vehicle age."
+    )
+    traffic_density: Optional[str] = Field(
+        default=None, description="Traffic density indicator."
+    )
+
+    @model_validator(mode="after")
+    def populate_aliases_and_locations(self) -> "SeverityPredictionRequest":
+        if self.location is not None:
+            self.latitude = self.location.latitude
+            self.longitude = self.location.longitude
+        if self.road_surface and not self.road_surface_conditions:
+            self.road_surface_conditions = self.road_surface
+        if self.weather and not self.weather_conditions:
+            self.weather_conditions = self.weather
+        if self.area_type and not self.urban_or_rural_area:
+            self.urban_or_rural_area = self.area_type
+        return self
 
 
 class SeverityClassProbability(BaseModel):
@@ -58,18 +133,22 @@ class SeverityPredictionResponse(BaseModel):
     class_probabilities: list[SeverityClassProbability] = Field(
         ..., description="Full probability distribution across all severity classes."
     )
-    model_version: str = Field(..., description="Identifier of the model that produced this prediction.")
-    predicted_at: datetime = Field(default_factory=datetime.utcnow)
+    probabilities: dict[str, float] = Field(
+        default_factory=dict, description="Dictionary mapping severity class to probability."
+    )
+    model_version: str = Field(
+        default="student-a-rf-v1.0", description="Identifier of the model."
+    )
+    predicted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    @field_validator("class_probabilities")
-    @classmethod
-    def probabilities_sum_to_one(
-        cls, value: list[SeverityClassProbability]
-    ) -> list[SeverityClassProbability]:
-        total = sum(item.probability for item in value)
-        if not 0.99 <= total <= 1.01:
-            raise ValueError(f"class_probabilities must sum to ~1.0, got {total:.4f}")
-        return value
+    @model_validator(mode="after")
+    def sync_probabilities_dict(self) -> "SeverityPredictionResponse":
+        if not self.probabilities and self.class_probabilities:
+            self.probabilities = {
+                item.severity.value if hasattr(item.severity, "value") else str(item.severity): item.probability
+                for item in self.class_probabilities
+            }
+        return self
 
 
 class BatchSeverityPredictionRequest(BaseModel):

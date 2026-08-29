@@ -10,27 +10,33 @@ import { apiRequest } from "@/lib/api/client";
 export const SEVERITY_ENDPOINT = "/api/severity/predict";
 
 /**
- * UI-facing severity categories. Not produced by the frontend — only rendered.
+ * UI-facing severity categories matching Student A's real model classes.
  */
-export type SeverityLevel = "low" | "moderate" | "high" | "fatal";
+export type SeverityLevel = "slight" | "serious" | "fatal";
 
 export interface SeverityPredictionRequest {
-  accident_date: string; // ISO date (YYYY-MM-DD)
-  accident_time: string; // 24h HH:mm
-  day_of_week: string;
-  vehicles_involved: number;
-  casualties: number;
-  speed_limit: number;
-  junction_control: string;
-  road_type: string;
-  traffic_density: string;
-  road_surface: string;
-  weather: string;
-  light_conditions: string;
-  visibility: string;
-  area_type: string;
-  latitude: number;
-  longitude: number;
+  accident_date?: string; // ISO date (YYYY-MM-DD)
+  accident_time?: string; // 24h HH:mm
+  day_of_week?: string;
+  number_of_vehicles?: number;
+  vehicles_involved?: number;
+  number_of_casualties?: number;
+  casualties?: number;
+  speed_limit?: number;
+  junction_control?: string;
+  junction_detail?: string;
+  road_type?: string;
+  traffic_density?: string;
+  road_surface?: string;
+  road_surface_conditions?: string;
+  weather?: string;
+  weather_conditions?: string;
+  light_conditions?: string;
+  visibility?: string;
+  area_type?: string;
+  urban_or_rural_area?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SeverityContributingFactor {
@@ -62,31 +68,34 @@ interface SeverityPredictionResponse {
     severity: string;
     probability: number;
   }[];
+  probabilities?: Record<string, number>;
   model_version: string;
   /** Timestamp when prediction was made */
   predicted_at?: string; // ISO datetime string
 }
 
 /**
- * Maps the internal severity levels to human-readable strings
+ * Maps the internal severity levels
  */
-const SEVERITY_LEVELS: SeverityLevel[] = ["low", "moderate", "high", "fatal"];
+const SEVERITY_LEVELS: SeverityLevel[] = ["slight", "serious", "fatal"];
 
 /**
  * Convert a raw severity string from the API to a UI-facing SeverityLevel.
  * @param value - Raw severity string from API
- * @returns Validated SeverityLevel or "moderate" as fallback
+ * @returns Validated SeverityLevel
  */
 function toSeverityLevel(value: string): SeverityLevel {
   const normalised = value.trim().toLowerCase();
-  return SEVERITY_LEVELS.find((level) => level === normalised) ?? "moderate";
+  if (normalised === "fatal") return "fatal";
+  if (normalised === "serious") return "serious";
+  return "slight";
 }
 
 /**
  * Map the raw API response to the UI-facing result structure.
  */
 function mapResponse(payload: SeverityPredictionResponse): SeverityPredictionResult {
-  // Convert class_probabilities array to a simple object for easier consumption
+  // Convert class_probabilities array to a simple object
   const probabilities = payload.class_probabilities
     ? payload.class_probabilities.reduce<Partial<Record<SeverityLevel, number>>>(
         (acc, item) => {
@@ -103,36 +112,38 @@ function mapResponse(payload: SeverityPredictionResponse): SeverityPredictionRes
   if (probabilities) {
     // Sort by probability descending to find top contributing factors
     const sortedFactors = Object.entries(probabilities)
-      .map(([severity, prob]) => ({ severity, prob }))
+      .map(([severity, prob]) => ({ severity, prob: prob ?? 0 }))
       .sort((a, b) => b.prob - a.prob);
 
-    // Add top 2 factors as contributors
-    for (const [, { severity, prob }] of sortedFactors.slice(0, 2)) {
-      contributingFactors.push({
-        label: `Model predicts ${severity} severity`,
-        weight: prob,
-        direction: prob > 0.5 ? "increases" : "reduces",
-      });
+    // Add top factors as contributors
+    for (const { severity, prob } of sortedFactors.slice(0, 2)) {
+      if (prob > 0.05) {
+        contributingFactors.push({
+          label: `Model estimated ${Math.round(prob * 100)}% likelihood of ${severity} injury outcome`,
+          weight: prob,
+          direction: prob > 0.5 ? "increases" : "reduces",
+        });
+      }
     }
   }
 
+  const sevLevel = toSeverityLevel(payload.predicted_severity);
+
   return {
-    severity: toSeverityLevel(payload.predicted_severity),
+    severity: sevLevel,
     confidence: payload.confidence,
     probabilities,
-    interpretation: `The model predicts ${payload.predicted_severity} severity with ${Math.round(
+    interpretation: `The Student A model predicts ${payload.predicted_severity.toUpperCase()} severity with ${Math.round(
       payload.confidence * 100
-    )}% confidence.`,
+    )}% confidence based on vehicle dynamics, road layout, and environmental factors.`,
     ...(contributingFactors.length > 0 && { contributingFactors }),
     ...(payload.model_version && { modelVersion: payload.model_version }),
     recommendedAction:
-      payload.predicted_severity === "fatal"
-        ? "Immediate emergency response required. Consider road closure and diversion."
-        : payload.predicted_severity === "high"
-          ? "Increased police presence and traffic monitoring recommended."
-          : payload.predicted_severity === "moderate"
-            ? "Standard accident response procedures sufficient."
-            : "Monitor situation and provide routine assistance.",
+      sevLevel === "fatal"
+        ? "Immediate emergency multi-agency response required. Consider full road closure, air ambulance, and major crash investigation protocol."
+        : sevLevel === "serious"
+          ? "Urgent paramedic dispatch and local traffic diversion recommended. Monitor road conditions."
+          : "Standard traffic police and incident response sufficient. Clear debris and monitor traffic flow.",
   };
 }
 
@@ -166,17 +177,8 @@ export async function predictSeverityBatch(
   request: SeverityPredictionRequest[],
   signal?: AbortSignal,
 ): Promise<SeverityPredictionResult[]> {
-  // Convert to backend batch format
   const batchRequest = {
-    accidents: request.map((req) => ({
-      ...req,
-      // Convert flat fields to nested objects expected by backend
-      location: {
-        latitude: 0, // Default - in real app would come from form/map
-        longitude: 0,
-      },
-      occurred_at: new Date(`${req.accident_date}T${req.accient_time}:00Z`).toISOString(),
-    })),
+    accidents: request,
   };
 
   const response = await apiRequest<{ predictions: SeverityPredictionResponse[] }>(
