@@ -17,8 +17,8 @@ export function InfrastructureRecommendations({
     <Card className="border-border bg-card shadow-none">
       <CardHeader className="border-b border-border">
         <SectionHeader
-          title="Illustrative recommendations"
-          description="Demonstration content only — not produced by a trained model."
+          title="Infrastructure recommendations"
+          description="Evidence-grounded policy and engineering recommendations generated from connected models."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

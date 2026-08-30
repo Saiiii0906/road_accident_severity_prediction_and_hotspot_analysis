@@ -49,3 +49,9 @@ data/output/uk_hotspot_map.html
 
 # Keep compact Student B production artifact
 !data/output/hotspot_summary.csv
+backend/.env
+
+# Environment variables
+.env
+.env.local
+.env.*

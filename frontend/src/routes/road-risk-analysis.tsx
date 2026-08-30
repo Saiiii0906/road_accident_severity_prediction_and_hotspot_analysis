@@ -19,6 +19,7 @@ import {
   type RiskAnalysis,
   type RiskFilters as Filters,
 } from "@/lib/api/risk";
+import { recordAnalysisHistory } from "@/lib/api/history";
 
 export const Route = createFileRoute("/road-risk-analysis")({
   head: () => ({
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/road-risk-analysis")({
       {
         name: "description",
         content:
-          "Analyze the road, environmental and temporal conditions associated with elevated accident risk.",
+          "Assess road-network risk profiles across road layouts, weather patterns and lighting conditions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/road-risk-analysis")({
       {
         property: "og:description",
         content:
-          "Understand which road, weather and time-of-day conditions are associated with elevated accident risk.",
+          "Continuous risk analysis across road types, environmental factors and time-of-day strata.",
       },
     ],
   }),
@@ -55,8 +56,20 @@ function RoadRiskAnalysisPage() {
     setStatus("loading");
     setErrorMessage(null);
     try {
-      setAnalysis(await loadRiskAnalysis(filters));
+      const next = await loadRiskAnalysis(filters);
+      setAnalysis(next);
       setStatus("success");
+      recordAnalysisHistory({
+        type: "road_risk_analysis",
+        title: `GNN Road Risk Analysis (${filters.region.toUpperCase()})`,
+        region: filters.region,
+        regionLabel: filters.region === "all" ? "All UK Network" : filters.region.toUpperCase(),
+        period: filters.period,
+        periodLabel: filters.period === "all" ? "All Periods" : filters.period,
+        status: "completed",
+        result: `Overall Risk: ${next.overview.overallRiskLevel.toUpperCase()} (${next.overview.severeAccidentRate})`,
+        signals: next.factors.slice(0, 3).map((f) => f.label),
+      });
     } catch {
       setAnalysis(null);
       setStatus("error");

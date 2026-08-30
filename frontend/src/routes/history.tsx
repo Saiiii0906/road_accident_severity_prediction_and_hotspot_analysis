@@ -114,8 +114,8 @@ function HistoryPage() {
                 {!isLoading && records.length === 0 ? (
                   <EmptyState
                     icon={SearchX}
-                    title="No analyses match these controls"
-                    description="Adjust the search term, widen the period or reset the controls to see every demonstration record."
+                    title="No recorded analyses found"
+                    description="Run a Severity Prediction, Hotspot query, Road Risk Analysis, or AI Infrastructure Report to populate your workspace history."
                     action={
                       <Button variant="outline" onClick={handleReset}>
                         Reset controls
@@ -141,8 +141,8 @@ function HistoryPage() {
                 {!isLoading && records.length > 0 ? (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <HistoryIcon className="h-4 w-4 shrink-0" aria-hidden />
-                    Showing {records.length} demonstration records. Real run history appears once
-                    the analysis service is connected.
+                    Showing {records.length} recorded analysis run{records.length === 1 ? "" : "s"}{" "}
+                    in your active workspace.
                   </p>
                 ) : null}
               </>

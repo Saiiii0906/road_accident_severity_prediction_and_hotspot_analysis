@@ -18,7 +18,7 @@ export function ImplementationPriorities({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Implementation priorities"
-          description="Compact demo matrix comparing priority, expected impact and delivery effort."
+          description="Decision matrix mapping priority level, expected safety impact, and delivery effort."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

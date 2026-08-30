@@ -18,7 +18,7 @@ export function SupportingEvidence({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Supporting evidence"
-          description="Demo signals that would normally underpin an intervention decision."
+          description="Empirical model-derived corroboration points underpinning intervention decisions."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">
@@ -46,7 +46,7 @@ export function SupportingEvidence({
                   <div
                     className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
                     role="img"
-                    aria-label={`${item.signal} demo strength ${item.strength} of 100`}
+                    aria-label={`${item.signal} signal strength ${item.strength} of 100`}
                   >
                     <div
                       className={cn("h-full rounded-full", display.barClassName)}

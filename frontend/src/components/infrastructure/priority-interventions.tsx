@@ -18,7 +18,7 @@ export function PriorityInterventions({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Priority interventions"
-          description="Ranked demonstration interventions — ordering will come from the connected model."
+          description="Ranked infrastructure interventions grounded in hotspot and topological risk models."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

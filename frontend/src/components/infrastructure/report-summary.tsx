@@ -26,7 +26,7 @@ export function ReportSummaryCard({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Infrastructure priority summary"
-          description="Executive view of the demonstration report."
+          description="Executive briefing synthesized from connected models."
         />
       </CardHeader>
       <CardContent className="p-5 sm:p-6">

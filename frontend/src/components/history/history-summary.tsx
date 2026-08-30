@@ -40,7 +40,7 @@ export function HistorySummaryCards({
               <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             </div>
             <p className="text-2xl leading-tight text-foreground">{summary[key]}</p>
-            <small className="text-muted-foreground">Demonstration value</small>
+            <small className="text-muted-foreground">Recorded in workspace</small>
           </CardContent>
         </Card>
       ))}

@@ -20,7 +20,7 @@ export function HistoryList({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Analysis history"
-          description="Demonstration records — the analysis service is not connected yet."
+          description="Chronological log of executed predictions, hotspot queries, risk profiles, and AI reports."
         />
       </CardHeader>
       <CardContent className="p-0">

@@ -6,28 +6,33 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from app.schemas.report import (
+    AIInfrastructureReportRequest,
+    AIInfrastructureReportResponse,
     ReportExportRequest,
     ReportExportResponse,
     ReportFilterParams,
     ReportSummaryResponse,
 )
+from app.services.llm_report_service import LLMReportService
 from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
 def get_report_service() -> ReportService:
-    """Dependency provider for ReportService.
-
-    This is the single place that decides which ReportService
-    implementation handles requests. Swapping the mock for a real
-    reporting/ML-backed service later means changing this one function
-    only.
-    """
+    """Dependency provider for legacy ReportService."""
     return ReportService()
 
 
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
+
+
+def get_llm_report_service() -> LLMReportService:
+    """Dependency provider for LLMReportService."""
+    return LLMReportService()
+
+
+LLMReportServiceDep = Annotated[LLMReportService, Depends(get_llm_report_service)]
 
 
 def get_report_filters(
@@ -38,17 +43,7 @@ def get_report_filters(
         Query(description="Restrict the report to a single local authority district."),
     ] = None,
 ) -> ReportFilterParams:
-    """Build and validate ReportFilterParams from individual query parameters.
-
-    ReportFilterParams cannot be used as `Depends()` directly: its
-    model_validator (date_from <= date_to) raises a raw pydantic
-    ValidationError on construction, which FastAPI does not automatically
-    translate into a 422 for dependency-constructed models — it would
-    surface as an unhandled 500 instead. This function constructs the
-    model explicitly and re-raises validation failures as
-    RequestValidationError, which FastAPI's default exception handler
-    does turn into a proper 422 response.
-    """
+    """Build and validate ReportFilterParams from individual query parameters."""
     try:
         return ReportFilterParams(
             date_from=date_from, date_to=date_to, local_authority=local_authority
@@ -58,6 +53,25 @@ def get_report_filters(
 
 
 ReportFiltersQuery = Annotated[ReportFilterParams, Depends(get_report_filters)]
+
+
+@router.post(
+    "/ai-infrastructure-report",
+    response_model=AIInfrastructureReportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate evidence-grounded AI Infrastructure decision-support report",
+    description=(
+        "Synthesizes deterministic model facts from Student A (Severity), "
+        "Student B (DBSCAN Hotspots), and Student C (GNN Road Risk) into "
+        "a structured, prioritized infrastructure and safety intervention report."
+    ),
+)
+def generate_ai_infrastructure_report(
+    request: AIInfrastructureReportRequest,
+    service: LLMReportServiceDep,
+) -> AIInfrastructureReportResponse:
+    """Generate structured AI decision-support report from empirical model grounding."""
+    return service.generate_report(request)
 
 
 @router.get(

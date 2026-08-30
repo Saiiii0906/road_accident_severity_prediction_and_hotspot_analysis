@@ -23,7 +23,7 @@ const CONFIG: Record<
   },
   success: {
     label: "Analysis generated",
-    detail: "Demonstration report — values are illustrative and awaiting backend intelligence.",
+    detail: "Report generated from connected road-safety models and Gemini analysis.",
     className: "border-success/30 bg-success/10 text-success",
     icon: CheckCircle2,
   },
@@ -60,7 +60,7 @@ export function ReportStatusBar({
           </div>
         </div>
         <Badge variant="outline" className="w-fit shrink-0 border-border text-muted-foreground">
-          {status === "success" ? (generatedLabel ?? "Demonstration report") : "Demo data"}
+          {status === "success" ? (generatedLabel ?? "Live analysis") : "Connected models"}
         </Badge>
       </CardContent>
     </Card>

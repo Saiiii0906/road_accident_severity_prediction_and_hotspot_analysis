@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, FileText, Info } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ReportControls } from "@/components/infrastructure/report-controls";
 import { ReportStatusBar } from "@/components/infrastructure/report-status";
 import { RiskSignalOverview } from "@/components/infrastructure/risk-signal-overview";
@@ -15,6 +14,8 @@ import { InfrastructureRecommendations } from "@/components/infrastructure/infra
 import { ImplementationPriorities } from "@/components/infrastructure/implementation-priorities";
 import { ReportSummaryCard } from "@/components/infrastructure/report-summary";
 import { ReportActions } from "@/components/infrastructure/report-actions";
+import { exportInfrastructureReportPdf } from "@/lib/pdf/report-pdf-generator";
+import { recordAnalysisHistory } from "@/lib/api/history";
 import {
   DEFAULT_REPORT_FILTERS,
   generateInfrastructureReport,
@@ -52,18 +53,34 @@ function AiInfrastructureReportPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [report, setReport] = useState<InfrastructureReport | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [exportNotice, setExportNotice] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const run = useCallback(async (filters: ReportFilters) => {
     setStatus("generating");
     setErrorMessage(null);
     try {
-      setReport(await generateInfrastructureReport(filters));
+      const res = await generateInfrastructureReport(filters);
+      setReport(res);
       setStatus("success");
-    } catch {
+      recordAnalysisHistory({
+        type: "infrastructure_report",
+        title: `AI Infrastructure Report (${filters.region.toUpperCase()})`,
+        region: filters.region,
+        regionLabel: filters.region === "all" ? "All UK Network" : filters.region.toUpperCase(),
+        period: filters.period,
+        periodLabel: filters.period.replace(/_/g, " "),
+        status: "completed",
+        result: res.summary.theme || "Generated infrastructure decision-support report",
+        signals: res.signals.map((s) => `${s.label}: ${s.value}`),
+      });
+    } catch (err: unknown) {
       setReport(null);
       setStatus("error");
-      setErrorMessage("The report could not be compiled for the selected controls.");
+      if (err instanceof Error && err.message) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage("The report could not be compiled for the selected controls.");
+      }
     }
   }, []);
 
@@ -72,15 +89,23 @@ function AiInfrastructureReportPage() {
   }, [appliedFilters, run]);
 
   const handleReset = useCallback(() => {
-    setExportNotice(false);
     setDraftFilters(DEFAULT_REPORT_FILTERS);
     setAppliedFilters(DEFAULT_REPORT_FILTERS);
   }, []);
 
   const handleGenerate = useCallback(() => {
-    setExportNotice(false);
     setAppliedFilters({ ...draftFilters });
   }, [draftFilters]);
+
+  const handleExport = useCallback(() => {
+    if (!report || status !== "success") return;
+    try {
+      setIsExporting(true);
+      exportInfrastructureReportPdf(report, appliedFilters);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [report, status, appliedFilters]);
 
   const isLoading = status === "generating" || status === "idle";
   const isEmpty =
@@ -112,16 +137,6 @@ function AiInfrastructureReportPage() {
 
           <div className="min-w-0 space-y-6">
             <ReportStatusBar status={status} generatedLabel={report?.generatedLabel} />
-
-            {exportNotice ? (
-              <Alert className="border-border bg-muted/30">
-                <Info className="h-4 w-4" aria-hidden />
-                <AlertDescription>
-                  Export is a placeholder in this phase. Document generation will be enabled once
-                  backend report intelligence is connected.
-                </AlertDescription>
-              </Alert>
-            ) : null}
 
             {status === "error" ? (
               <EmptyState
@@ -170,12 +185,13 @@ function AiInfrastructureReportPage() {
 
             <ReportActions
               isGenerating={status === "generating"}
+              canExport={status === "success" && !!report}
+              isExporting={isExporting}
               onGenerate={handleGenerate}
               onRefresh={() => {
-                setExportNotice(false);
                 void run(appliedFilters);
               }}
-              onExport={() => setExportNotice(true)}
+              onExport={handleExport}
             />
           </div>
         </div>

@@ -13,6 +13,7 @@ import {
   type HotspotDataset,
   type HotspotFilters as Filters,
 } from "@/lib/api/hotspots";
+import { recordAnalysisHistory } from "@/lib/api/history";
 
 export const Route = createFileRoute("/hotspot-explorer")({
   head: () => ({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/hotspot-explorer")({
       {
         name: "description",
         content:
-          "Explore accident concentration patterns and identify locations requiring targeted road-safety intervention.",
+          "Explore historical accident clusters, spatial density and priority intervention zones.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/hotspot-explorer")({
       {
         property: "og:description",
         content:
-          "Identify where severe road accidents concentrate and prioritise safety intervention.",
+          "Interactive map and cluster analytics for accident hotspots across the UK road network.",
       },
     ],
   }),
@@ -56,6 +57,19 @@ function HotspotExplorerPage() {
         current && next.hotspots.some((h) => h.id === current) ? current : null,
       );
       setStatus("success");
+      recordAnalysisHistory({
+        type: "hotspot_analysis",
+        title: `DBSCAN Hotspot Analysis (${filters.region.toUpperCase()})`,
+        region: filters.region,
+        regionLabel: filters.region === "all" ? "All UK Network" : filters.region.toUpperCase(),
+        period: filters.period,
+        periodLabel: filters.period === "all" ? "All Periods" : filters.period,
+        status: "completed",
+        result: `Identified ${next.summary.totalHotspots} clusters (${next.summary.highRiskHotspots} high risk)`,
+        signals: next.hotspots
+          .slice(0, 3)
+          .map((h) => `${h.location}: ${h.accidentCount} accidents`),
+      });
     } catch {
       setDataset(null);
       setStatus("error");

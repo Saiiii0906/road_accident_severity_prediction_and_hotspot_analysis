@@ -8,6 +8,7 @@ import type { SeverityFormValues } from "@/components/severity/severity-schema";
 import { toPredictionRequest } from "@/components/severity/severity-schema";
 import { predictSeverity, type SeverityPredictionResult } from "@/lib/api/severity";
 import { ApiError } from "@/lib/api/client";
+import { recordAnalysisHistory } from "@/lib/api/history";
 
 export const Route = createFileRoute("/severity-prediction")({
   head: () => ({
@@ -16,14 +17,14 @@ export const Route = createFileRoute("/severity-prediction")({
       {
         name: "description",
         content:
-          "Assess the expected severity of a road accident using environmental, road and traffic conditions.",
+          "Assess accident severity outcomes using road layout, weather, lighting and traffic conditions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "Severity Prediction — Vantage" },
       {
         property: "og:description",
-        content: "Estimate expected accident severity for a described collision scenario.",
+        content: "Predict road accident severity across slight, serious and fatal outcomes.",
       },
     ],
   }),
@@ -44,6 +45,24 @@ function SeverityPredictionPage() {
       const prediction = await predictSeverity(toPredictionRequest(values));
       setResult(prediction);
       setStatus("success");
+      recordAnalysisHistory({
+        type: "severity_prediction",
+        title: "Accident Severity Prediction",
+        region: "all",
+        regionLabel:
+          values.urbanOrRural === "urban"
+            ? "Urban Area"
+            : values.urbanOrRural === "rural"
+              ? "Rural Area"
+              : "All Areas",
+        period: "on_demand",
+        periodLabel: "On-demand",
+        status: "completed",
+        result: `Predicted ${prediction.severity.toUpperCase()} (${Math.round(
+          (prediction.confidence ?? 0) * 100,
+        )}% confidence)`,
+        signals: (prediction.contributingFactors ?? []).map((f) => f.label),
+      });
     } catch (error) {
       setResult(null);
       setErrorMessage(

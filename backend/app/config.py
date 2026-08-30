@@ -12,21 +12,14 @@ class Settings(BaseSettings):
       1. Actual environment variables
       2. Values in a .env file at the backend/app/ directory (if present)
       3. The defaults declared below
-
-    Only APP_NAME, APP_VERSION, ENVIRONMENT, and LOG_LEVEL are expected to
-    be overridden via environment variables in normal use; the other
-    fields are still technically overridable (pydantic-settings does not
-    special-case them) but are not part of the supported configuration
-    surface at this stage of the project.
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True,
     )
-
 
     APP_NAME: str = "Road Accident Severity Prediction & Hotspot Analysis"
     APP_VERSION: str = "1.0.0"
@@ -40,7 +33,6 @@ class Settings(BaseSettings):
         "reports."
     )
 
-
     CORS_ORIGINS: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
@@ -49,8 +41,22 @@ class Settings(BaseSettings):
         ]
     )
 
-    
     LOG_LEVEL: str = "INFO"
+
+    # Multi-Provider Routing
+    LLM_PRIMARY_PROVIDER: str = "gemini"
+
+    # Gemini Provider Settings
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-3.6-flash"
+
+    # Claude Provider Settings
+    CLAUDE_API_KEY: str | None = None
+    CLAUDE_MODEL: str = "claude-3-7-sonnet-20250219"
+
+    # Common LLM Settings
+    LLM_TEMPERATURE: float = 0.2
+    LLM_TIMEOUT_SECONDS: float = 30.0
 
     @property
     def BASE_DIR(self) -> Path:
@@ -117,17 +123,10 @@ class Settings(BaseSettings):
         return self.PROJECT_ROOT / "student_C" / "gnn_risk_predictions.json"
 
 
-
-
-
 @lru_cache
 def get_settings() -> Settings:
-    """Return the cached Settings instance.
-
-    Wrapped in lru_cache so Settings is constructed once per process and
-    can be used as a FastAPI dependency (`Depends(get_settings)`) without
-    re-reading the environment or .env file on every request.
-    """
+    """Return the cached Settings instance."""
     return Settings()
+
 
 settings = get_settings()

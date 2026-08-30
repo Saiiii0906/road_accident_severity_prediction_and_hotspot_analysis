@@ -1,11 +1,9 @@
 /**
- * History service boundary (frontend stage).
+ * History service boundary.
  *
- * TODO(backend): replace `loadHistory` internals with `apiRequest` against the
- * real endpoint and map the payload into `HistoryRecord`. No component changes.
+ * Client-side persistence of real user-generated analysis runs,
+ * model predictions, and AI decision-support reports.
  */
-
-import { DEMO_HISTORY_RECORDS } from "@/lib/mock/history";
 
 export type AnalysisType =
   "severity_prediction" | "hotspot_analysis" | "road_risk_analysis" | "infrastructure_report";
@@ -22,7 +20,7 @@ export interface HistoryRecord {
   periodLabel: string;
   /** ISO timestamp. */
   createdAt: string;
-  /** Pre-formatted label so the demo list renders deterministically. */
+  /** Pre-formatted user-facing date string. */
   createdLabel: string;
   status: HistoryStatus;
   /** Short, scannable outcome summary. */
@@ -53,6 +51,8 @@ export const DEFAULT_HISTORY_FILTERS: HistoryFilters = {
   search: "",
 };
 
+export const HISTORY_STORAGE_KEY = "vantage_analysis_history";
+
 export function summarizeHistory(records: HistoryRecord[]): HistorySummary {
   return {
     total: records.length,
@@ -70,13 +70,72 @@ export const ANALYSIS_ROUTE = {
   infrastructure_report: "/ai-infrastructure-report",
 } as const satisfies Record<AnalysisType, string>;
 
-/** Frontend-stage loader: narrows the isolated demo dataset client-side. */
-export async function loadHistory(filters: HistoryFilters): Promise<HistoryRecord[]> {
-  await new Promise((resolve) => setTimeout(resolve, 600));
+/** Get stored history records from local storage. */
+export function getStoredHistory(): HistoryRecord[] {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return [];
+  }
+  try {
+    const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as HistoryRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
 
+/** Save a newly executed analysis run into local history. */
+export function recordAnalysisHistory(
+  recordInput: Omit<HistoryRecord, "id" | "createdAt" | "createdLabel">,
+): HistoryRecord {
+  const now = new Date();
+  const id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const createdLabel = now.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const record: HistoryRecord = {
+    ...recordInput,
+    id,
+    createdAt: now.toISOString(),
+    createdLabel,
+  };
+
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const existing = getStoredHistory();
+      const updated = [record, ...existing.filter((r) => r.id !== record.id)].slice(0, 50);
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Graceful fallback if localStorage quota is exceeded
+    }
+  }
+
+  return record;
+}
+
+/** Clear all stored analysis history. */
+export function clearStoredHistory(): void {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+/** Load history filtered by user controls. */
+export async function loadHistory(filters: HistoryFilters): Promise<HistoryRecord[]> {
+  const records = getStoredHistory();
   const query = filters.search.trim().toLowerCase();
 
-  return DEMO_HISTORY_RECORDS.filter((record) => {
+  return records.filter((record) => {
     if (filters.type !== "all" && record.type !== filters.type) return false;
     if (filters.status !== "all" && record.status !== filters.status) return false;
     if (filters.region !== "all" && record.region !== filters.region) return false;
