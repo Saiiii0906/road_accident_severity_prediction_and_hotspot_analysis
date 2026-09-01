@@ -149,6 +149,8 @@ def _gemini_compatible_schema(schema_cls: Type[BaseModel]) -> dict[str, Any]:
     return resolve(raw_schema)
 
 
+import time
+
 class GeminiProvider(LLMProvider):
     """Google Gemini implementation for structured JSON report generation."""
 
@@ -161,6 +163,9 @@ class GeminiProvider(LLMProvider):
         temperature: Optional[float] = None,
         timeout_seconds: Optional[float] = None,
         http_client: Optional[httpx.Client] = None,
+        max_retries: Optional[int] = None,
+        retry_base_delay: Optional[float] = None,
+        retry_max_delay: Optional[float] = None,
     ) -> None:
         self.api_key = settings.GEMINI_API_KEY if api_key is None else api_key
         self.model = settings.GEMINI_MODEL if model is None else model
@@ -169,6 +174,19 @@ class GeminiProvider(LLMProvider):
         )
         self.timeout_seconds = (
             settings.LLM_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
+        )
+        self.max_retries = (
+            getattr(settings, "LLM_MAX_RETRIES", 2) if max_retries is None else max_retries
+        )
+        self.retry_base_delay = (
+            getattr(settings, "LLM_RETRY_BASE_DELAY", 1.0)
+            if retry_base_delay is None
+            else retry_base_delay
+        )
+        self.retry_max_delay = (
+            getattr(settings, "LLM_RETRY_MAX_DELAY", 4.0)
+            if retry_max_delay is None
+            else retry_max_delay
         )
         self._client = http_client
 
@@ -216,52 +234,121 @@ class GeminiProvider(LLMProvider):
         client = self._client or httpx.Client(timeout=self.timeout_seconds)
         should_close = self._client is None
 
+        max_attempts = 1 + max(0, self.max_retries)
+        last_response: Optional[httpx.Response] = None
+
         try:
-            response = client.post(url, headers=headers, json=payload)
-        except httpx.TimeoutException as exc:
-            logger.error("Gemini API call timed out after %.1fs", self.timeout_seconds)
-            raise LLMTimeoutError(
-                f"Gemini API request timed out after {self.timeout_seconds}s"
-            ) from exc
-        except httpx.RequestError as exc:
-            sanitized = self._sanitize_error(str(exc))
-            logger.error("Gemini network error: %s", sanitized)
-            raise LLMProviderError(f"Network error communicating with Gemini: {sanitized}") from exc
+            for attempt in range(max_attempts):
+                try:
+                    response = client.post(url, headers=headers, json=payload)
+                except httpx.TimeoutException as exc:
+                    if attempt < max_attempts - 1:
+                        delay = min(
+                            self.retry_base_delay * (2**attempt), self.retry_max_delay
+                        )
+                        logger.warning(
+                            "Gemini API request timed out (attempt %d/%d). Retrying in %.1fs...",
+                            attempt + 1,
+                            max_attempts,
+                            delay,
+                        )
+                        if delay > 0:
+                            time.sleep(delay)
+                        continue
+                    logger.error("Gemini API call timed out after %.1fs", self.timeout_seconds)
+                    raise LLMTimeoutError(
+                        f"Gemini API request timed out after {self.timeout_seconds}s"
+                    ) from exc
+                except httpx.RequestError as exc:
+                    sanitized = self._sanitize_error(str(exc))
+                    if attempt < max_attempts - 1:
+                        delay = min(
+                            self.retry_base_delay * (2**attempt), self.retry_max_delay
+                        )
+                        logger.warning(
+                            "Gemini network error: %s (attempt %d/%d). Retrying in %.1fs...",
+                            sanitized,
+                            attempt + 1,
+                            max_attempts,
+                            delay,
+                        )
+                        if delay > 0:
+                            time.sleep(delay)
+                        continue
+                    logger.error("Gemini network error: %s", sanitized)
+                    raise LLMProviderError(
+                        f"Network error communicating with Gemini: {sanitized}"
+                    ) from exc
+
+                # If successful (HTTP 200), break and process candidates
+                if response.status_code == 200:
+                    last_response = response
+                    break
+
+                # Non-200 responses
+                status_code = response.status_code
+                error_text = self._sanitize_error(response.text)
+
+                # Non-retryable errors
+                if status_code in (401, 403) or (
+                    status_code == 400 and "API_KEY_INVALID" in error_text
+                ):
+                    raise LLMAuthenticationError(
+                        f"Gemini authentication failed (HTTP {status_code}). Please verify GEMINI_API_KEY."
+                    )
+                if status_code == 404:
+                    raise LLMProviderError(
+                        f"Gemini model '{self.model}' not found or unavailable (HTTP 404): {error_text}"
+                    )
+                if status_code == 400:
+                    raise LLMProviderError(
+                        f"Gemini API error (HTTP 400): {error_text}"
+                    )
+
+                # Transient errors: 429, 500, 502, 503, 504
+                if status_code in (429, 500, 502, 503, 504):
+                    if attempt < max_attempts - 1:
+                        delay = min(
+                            self.retry_base_delay * (2**attempt), self.retry_max_delay
+                        )
+                        logger.warning(
+                            "Gemini returned transient HTTP %d (attempt %d/%d). Retrying in %.1fs...",
+                            status_code,
+                            attempt + 1,
+                            max_attempts,
+                            delay,
+                        )
+                        if delay > 0:
+                            time.sleep(delay)
+                        continue
+
+                    # Retries exhausted for transient error
+                    if status_code == 429:
+                        raise LLMRateLimitError(
+                            "Gemini API rate limit or quota exceeded (HTTP 429)."
+                        )
+                    if status_code >= 500:
+                        raise LLMProviderError(
+                            f"Gemini server error (HTTP {status_code}): {error_text}"
+                        )
+                    raise LLMProviderError(
+                        f"Gemini API error (HTTP {status_code}): {error_text}"
+                    )
+
+                # Any other unexpected status code: do not retry
+                raise LLMProviderError(
+                    f"Gemini API error (HTTP {status_code}): {error_text}"
+                )
         finally:
             if should_close:
                 client.close()
 
-        # Handle HTTP status codes
-        if response.status_code != 200:
-            status_code = response.status_code
-            error_text = self._sanitize_error(response.text)
-
-            if status_code in (401, 403) or (
-                status_code == 400 and "API_KEY_INVALID" in error_text
-            ):
-                raise LLMAuthenticationError(
-                    f"Gemini authentication failed (HTTP {status_code}). Please verify GEMINI_API_KEY."
-                )
-            if status_code == 429:
-                raise LLMRateLimitError(
-                    "Gemini API rate limit or quota exceeded (HTTP 429)."
-                )
-            if status_code == 404:
-                raise LLMProviderError(
-                    f"Gemini model '{self.model}' not found or unavailable (HTTP 404): {error_text}"
-                )
-            if status_code >= 500:
-                raise LLMProviderError(
-                    f"Gemini server error (HTTP {status_code}): {error_text}"
-                )
-
-            raise LLMProviderError(
-                f"Gemini API error (HTTP {status_code}): {error_text}"
-            )
+        if last_response is None or last_response.status_code != 200:
+            raise LLMProviderError("Gemini API call failed without a valid response.")
 
         # Parse candidates
         try:
-            res_data = response.json()
+            res_data = last_response.json()
             candidates = res_data.get("candidates", [])
             if not candidates:
                 raise LLMValidationError("Gemini returned an empty response with no candidates.")

@@ -56,7 +56,10 @@ class Settings(BaseSettings):
 
     # Common LLM Settings
     LLM_TEMPERATURE: float = 0.2
-    LLM_TIMEOUT_SECONDS: float = 30.0
+    LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_MAX_RETRIES: int = 2
+    LLM_RETRY_BASE_DELAY: float = 1.0
+    LLM_RETRY_MAX_DELAY: float = 4.0
 
     @property
     def BASE_DIR(self) -> Path:

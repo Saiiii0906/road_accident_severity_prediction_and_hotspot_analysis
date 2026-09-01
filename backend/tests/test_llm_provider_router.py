@@ -190,6 +190,26 @@ class TestLLMProviderRouter(unittest.TestCase):
         self.assertEqual(self.mock_gemini.generate_structured_report.call_count, 1)
         self.assertEqual(self.mock_claude.generate_structured_report.call_count, 1)
 
+    def test_claude_unconfigured_preserves_gemini_primary_error(self) -> None:
+        """When Claude fallback is unconfigured, router must re-raise primary Gemini error."""
+        self.mock_gemini.generate_structured_report.side_effect = LLMRateLimitError(
+            "Gemini quota exhausted"
+        )
+        self.mock_claude.generate_structured_report.side_effect = LLMConfigurationError(
+            "CLAUDE_API_KEY is not configured"
+        )
+
+        router = LLMProviderRouter(
+            primary_provider=self.mock_gemini, fallback_provider=self.mock_claude
+        )
+
+        with self.assertRaises(LLMRateLimitError) as ctx:
+            router.generate_structured_report("prompt")
+
+        self.assertIn("Gemini quota exhausted", str(ctx.exception))
+        self.assertEqual(self.mock_gemini.generate_structured_report.call_count, 1)
+        self.assertEqual(self.mock_claude.generate_structured_report.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
