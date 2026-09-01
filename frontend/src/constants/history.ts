@@ -1,12 +1,13 @@
 import type { Option } from "@/constants/severity";
 import type { AnalysisType, HistoryStatus } from "@/lib/api/history";
-import { Gauge, MapPinned, Route as RouteIcon, BrainCircuit, type LucideIcon } from "lucide-react";
+import { Gauge, MapPinned, Route as RouteIcon, BrainCircuit, Navigation, type LucideIcon } from "lucide-react";
 
 export const ANALYSIS_TYPE_DISPLAY: Record<AnalysisType, { label: string; icon: LucideIcon }> = {
   severity_prediction: { label: "Severity prediction", icon: Gauge },
   hotspot_analysis: { label: "Hotspot analysis", icon: MapPinned },
   road_risk_analysis: { label: "Road risk analysis", icon: RouteIcon },
   infrastructure_report: { label: "Infrastructure report", icon: BrainCircuit },
+  journey_safety_analysis: { label: "Journey safety analysis", icon: Navigation },
 };
 
 /** Reuses existing status tokens only — no new colours. */
@@ -33,6 +34,7 @@ export const HISTORY_STATUS_DISPLAY: Record<
 
 export const HISTORY_TYPES: Option[] = [
   { value: "all", label: "All analyses" },
+  { value: "journey_safety_analysis", label: "Journey safety analysis" },
   { value: "severity_prediction", label: "Severity prediction" },
   { value: "hotspot_analysis", label: "Hotspot analysis" },
   { value: "road_risk_analysis", label: "Road risk analysis" },

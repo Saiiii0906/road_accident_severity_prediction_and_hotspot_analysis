@@ -1,96 +1,112 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, FileText } from "lucide-react";
+import { AlertCircle, Navigation } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
-import { SectionHeader } from "@/components/common/section-header";
 import { EmptyState } from "@/components/common/empty-state";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
-import { MapHero } from "@/components/dashboard/map-hero";
-import { AnalyticsGrid } from "@/components/dashboard/analytics-grid";
-import { InsightsPanel } from "@/components/dashboard/insights-panel";
-import { ActivityList } from "@/components/dashboard/activity-list";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import { JourneyForm } from "@/components/journey/journey-form";
+import { JourneyResults } from "@/components/journey/journey-results";
+import { analyzeJourney, type JourneyAnalyzeRequest, type JourneyAnalyzeResponse } from "@/lib/api/journey";
+import { recordAnalysisHistory } from "@/lib/api/history";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Vantage Road Safety Intelligence" },
+      { title: "Journey Safety Analysis — Vantage Road Safety Intelligence" },
       {
         name: "description",
         content:
-          "Today's overview of accident severity signals, hotspot density, analytics and AI insights across the road network.",
+          "Multi-source journey safety evaluation combining route corridor analysis, historical ML models, and grounded AI synthesis.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:title", content: "Dashboard — Vantage" },
+      { property: "og:title", content: "Journey Safety Analysis — Vantage" },
       {
         property: "og:description",
-        content: "Network overview of severity signals, hotspots, analytics and AI insights.",
+        content: "Multi-source journey safety evaluation for planned travel itineraries.",
       },
     ],
   }),
-  component: Dashboard,
+  component: JourneySafetyDashboard,
 });
 
-function formatToday() {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+function JourneySafetyDashboard() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [response, setResponse] = useState<JourneyAnalyzeResponse | null>(null);
 
-function Dashboard() {
+  const handleAnalyze = async (data: JourneyAnalyzeRequest) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await analyzeJourney(data);
+      setResponse(result);
+
+      // Record successful journey execution in local history
+      recordAnalysisHistory({
+        type: "journey_safety_analysis",
+        title: `${data.source} → ${data.destination}`,
+        region: "all",
+        regionLabel: "Corridor Analysis",
+        period: data.travel_date,
+        periodLabel: `${data.travel_date} ${data.travel_time}`,
+        status: "completed",
+        result: `Journey safety analysis evaluated for ${data.source} → ${data.destination}`,
+        signals: [
+          `Origin: ${data.source}`,
+          `Destination: ${data.destination}`,
+          `Schedule: ${data.travel_date} at ${data.travel_time}`,
+        ],
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to execute journey analysis.";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AppShell>
       <div className="space-y-8">
         <PageHeader
-          eyebrow={`Today's overview · ${formatToday()}`}
-          title="Welcome back"
-          description="A consolidated view of severity outcomes, hotspot density, corridor exposure and AI-detected signals across the monitored road network."
-          actions={
-            <>
-              <Button variant="outline" size="sm">
-                <Download className="mr-1.5 h-4 w-4" aria-hidden />
-                Export
-              </Button>
-              <Button size="sm">New prediction</Button>
-            </>
-          }
+          eyebrow="Multi-Source Safety Intelligence"
+          title="Journey Safety Analysis"
+          description="Evaluate road corridor safety, historical accident patterns, and environmental risks for your planned route and departure time."
         />
 
-        <KpiGrid />
-
-        <section aria-label="Hotspot map">
-          <MapHero />
+        {/* Primary Input Form */}
+        <section aria-label="Journey parameters">
+          <JourneyForm isLoading={isLoading} onSubmit={handleAnalyze} />
         </section>
 
-        <AnalyticsGrid />
+        {/* Error Feedback */}
+        {error && (
+          <Alert variant="destructive" className="border-destructive/40 bg-destructive/10">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            <AlertTitle>Analysis Request Failed</AlertTitle>
+            <AlertDescription className="text-sm">{error}</AlertDescription>
+          </Alert>
+        )}
 
-        <section className="grid gap-4 lg:grid-cols-2" aria-label="Insights and activity">
-          <InsightsPanel />
-          <ActivityList />
-        </section>
-
-        <section aria-label="Saved reports">
-          <Card className="border-border bg-card shadow-none">
-            <CardHeader className="border-b border-border">
-              <SectionHeader
-                title="Saved reports"
-                description="Reports you pin for review appear here."
-              />
-            </CardHeader>
-            <CardContent className="p-5">
-              <EmptyState
-                icon={FileText}
-                title="No saved reports yet"
-                description="Generate an AI infrastructure report and pin it to keep the assessments your team is reviewing within reach."
-                action={<Button size="sm">Generate report</Button>}
-              />
-            </CardContent>
-          </Card>
+        {/* Results Panel */}
+        <section aria-label="Analysis results">
+          {response ? (
+            <JourneyResults response={response} />
+          ) : (
+            <Card className="border-border bg-card shadow-none">
+              <CardContent className="p-8">
+                <EmptyState
+                  icon={Navigation}
+                  title="Ready for journey analysis"
+                  description="Enter your origin, destination, departure date, and time above to initiate a corridor safety evaluation."
+                />
+              </CardContent>
+            </Card>
+          )}
         </section>
       </div>
     </AppShell>

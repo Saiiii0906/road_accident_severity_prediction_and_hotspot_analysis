@@ -6,7 +6,11 @@
  */
 
 export type AnalysisType =
-  "severity_prediction" | "hotspot_analysis" | "road_risk_analysis" | "infrastructure_report";
+  | "severity_prediction"
+  | "hotspot_analysis"
+  | "road_risk_analysis"
+  | "infrastructure_report"
+  | "journey_safety_analysis";
 
 export type HistoryStatus = "completed" | "processing" | "failed";
 
@@ -68,6 +72,7 @@ export const ANALYSIS_ROUTE = {
   hotspot_analysis: "/hotspot-explorer",
   road_risk_analysis: "/road-risk-analysis",
   infrastructure_report: "/ai-infrastructure-report",
+  journey_safety_analysis: "/dashboard",
 } as const satisfies Record<AnalysisType, string>;
 
 /** Get stored history records from local storage. */

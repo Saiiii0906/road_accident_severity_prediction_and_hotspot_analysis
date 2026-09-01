@@ -12,6 +12,7 @@ from app.routes.severity_route import router as severity_router
 from app.routes.hotspot_route import router as hotspot_router
 from app.routes.risk_route import router as risk_router
 from app.routes.report_route import router as report_router
+from app.routes.journey_route import router as journey_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -120,6 +121,8 @@ app.include_router(risk_router)
 app.include_router(risk_router, prefix=settings.API_PREFIX)
 app.include_router(report_router)
 app.include_router(report_router, prefix=settings.API_PREFIX)
+app.include_router(journey_router)
+app.include_router(journey_router, prefix=settings.API_PREFIX)
 
 
 @app.get(
