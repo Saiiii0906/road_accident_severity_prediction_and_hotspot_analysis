@@ -8,7 +8,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { JourneyForm } from "@/components/journey/journey-form";
 import { JourneyResults } from "@/components/journey/journey-results";
-import { analyzeJourney, type JourneyAnalyzeRequest, type JourneyAnalyzeResponse } from "@/lib/api/journey";
+import {
+  analyzeJourney,
+  type JourneyAnalyzeRequest,
+  type JourneyAnalyzeResponse,
+} from "@/lib/api/journey";
 import { recordAnalysisHistory } from "@/lib/api/history";
 
 export const Route = createFileRoute("/dashboard")({

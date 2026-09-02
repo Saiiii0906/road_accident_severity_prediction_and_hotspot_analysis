@@ -6,6 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { JourneyAnalyzeRequest } from "@/lib/api/journey";
 
+export interface JourneyFormValues {
+  source: string;
+  destination: string;
+  travelDate: string;
+  travelTime: string;
+}
+
+export interface JourneyFormErrors {
+  source?: string | undefined;
+  destination?: string | undefined;
+  travelDate?: string | undefined;
+  travelTime?: string | undefined;
+}
+
 interface JourneyFormProps {
   isLoading: boolean;
   onSubmit: (data: JourneyAnalyzeRequest) => void;
@@ -13,7 +27,7 @@ interface JourneyFormProps {
 
 function getDefaultDate(): string {
   const now = new Date();
-  return now.toISOString().split("T")[0];
+  return now.toISOString().slice(0, 10);
 }
 
 function getDefaultTime(): string {
@@ -28,10 +42,10 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
   const [destination, setDestination] = useState("");
   const [travelDate, setTravelDate] = useState(getDefaultDate());
   const [travelTime, setTravelTime] = useState(getDefaultTime());
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<JourneyFormErrors>({});
 
   const validate = (): boolean => {
-    const nextErrors: Record<string, string> = {};
+    const nextErrors: JourneyFormErrors = {};
     if (!source.trim() || source.trim().length < 2) {
       nextErrors.source = "Please enter a valid origin location (min 2 characters).";
     }
@@ -80,7 +94,10 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Origin */}
             <div className="space-y-2">
-              <Label htmlFor="source-input" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <Label
+                htmlFor="source-input"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+              >
                 <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Source location <span className="text-destructive">*</span>
               </Label>
@@ -91,7 +108,7 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
                 value={source}
                 onChange={(e) => {
                   setSource(e.target.value);
-                  if (errors.source) setErrors((prev) => ({ ...prev, source: "" }));
+                  if (errors.source) setErrors((prev) => ({ ...prev, source: undefined }));
                 }}
                 disabled={isLoading}
                 aria-invalid={Boolean(errors.source)}
@@ -108,7 +125,10 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
 
             {/* Destination */}
             <div className="space-y-2">
-              <Label htmlFor="destination-input" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <Label
+                htmlFor="destination-input"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+              >
                 <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Destination location <span className="text-destructive">*</span>
               </Label>
@@ -119,12 +139,15 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
                 value={destination}
                 onChange={(e) => {
                   setDestination(e.target.value);
-                  if (errors.destination) setErrors((prev) => ({ ...prev, destination: "" }));
+                  if (errors.destination)
+                    setErrors((prev) => ({ ...prev, destination: undefined }));
                 }}
                 disabled={isLoading}
                 aria-invalid={Boolean(errors.destination)}
                 aria-describedby={errors.destination ? "destination-error" : undefined}
-                className={errors.destination ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={
+                  errors.destination ? "border-destructive focus-visible:ring-destructive" : ""
+                }
                 required
               />
               {errors.destination && (
@@ -136,7 +159,10 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
 
             {/* Travel Date */}
             <div className="space-y-2">
-              <Label htmlFor="travel-date-input" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <Label
+                htmlFor="travel-date-input"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+              >
                 <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Travel date <span className="text-destructive">*</span>
               </Label>
@@ -146,12 +172,14 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
                 value={travelDate}
                 onChange={(e) => {
                   setTravelDate(e.target.value);
-                  if (errors.travelDate) setErrors((prev) => ({ ...prev, travelDate: "" }));
+                  if (errors.travelDate) setErrors((prev) => ({ ...prev, travelDate: undefined }));
                 }}
                 disabled={isLoading}
                 aria-invalid={Boolean(errors.travelDate)}
                 aria-describedby={errors.travelDate ? "travel-date-error" : undefined}
-                className={errors.travelDate ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={
+                  errors.travelDate ? "border-destructive focus-visible:ring-destructive" : ""
+                }
                 required
               />
               {errors.travelDate && (
@@ -163,7 +191,10 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
 
             {/* Travel Time */}
             <div className="space-y-2">
-              <Label htmlFor="travel-time-input" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <Label
+                htmlFor="travel-time-input"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+              >
                 <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Travel time <span className="text-destructive">*</span>
               </Label>
@@ -173,12 +204,14 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
                 value={travelTime}
                 onChange={(e) => {
                   setTravelTime(e.target.value);
-                  if (errors.travelTime) setErrors((prev) => ({ ...prev, travelTime: "" }));
+                  if (errors.travelTime) setErrors((prev) => ({ ...prev, travelTime: undefined }));
                 }}
                 disabled={isLoading}
                 aria-invalid={Boolean(errors.travelTime)}
                 aria-describedby={errors.travelTime ? "travel-time-error" : undefined}
-                className={errors.travelTime ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={
+                  errors.travelTime ? "border-destructive focus-visible:ring-destructive" : ""
+                }
                 required
               />
               {errors.travelTime && (
@@ -190,11 +223,7 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
           </div>
 
           <div className="flex items-center justify-end pt-2">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="min-w-[180px] font-medium"
-            >
+            <Button type="submit" disabled={isLoading} className="min-w-[180px] font-medium">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -213,4 +242,3 @@ export function JourneyForm({ isLoading, onSubmit }: JourneyFormProps) {
     </Card>
   );
 }
-

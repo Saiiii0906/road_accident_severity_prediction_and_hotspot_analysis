@@ -33,7 +33,10 @@ function StatusBadge({ status }: { status: DataAvailabilityStatus }) {
       );
     case "unavailable":
       return (
-        <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive text-xs">
+        <Badge
+          variant="outline"
+          className="border-destructive/30 bg-destructive/10 text-destructive text-xs"
+        >
           <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
           Unavailable
         </Badge>
@@ -41,7 +44,10 @@ function StatusBadge({ status }: { status: DataAvailabilityStatus }) {
     case "pending":
     default:
       return (
-        <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning text-xs font-normal">
+        <Badge
+          variant="outline"
+          className="border-warning/30 bg-warning/10 text-warning text-xs font-normal"
+        >
           <Clock3 className="mr-1 h-3 w-3" aria-hidden="true" />
           Pending Provider Integration
         </Badge>
@@ -50,7 +56,15 @@ function StatusBadge({ status }: { status: DataAvailabilityStatus }) {
 }
 
 export function JourneyResults({ response }: JourneyResultsProps) {
-  const { journey, route, live_context, historical_evidence, safety_assessment, llm_synthesis, provenance } = response;
+  const {
+    journey,
+    route,
+    live_context,
+    historical_evidence,
+    safety_assessment,
+    llm_synthesis,
+    provenance,
+  } = response;
 
   const formattedTimestamp = new Date(provenance.analysis_timestamp).toLocaleString("en-GB", {
     dateStyle: "medium",
@@ -115,19 +129,25 @@ export function JourneyResults({ response }: JourneyResultsProps) {
               <div className="flex justify-between">
                 <span>Calculated distance:</span>
                 <span className="font-medium text-foreground">
-                  {route.distance_km != null ? `${route.distance_km} km` : "Pending routing provider"}
+                  {route.distance_km != null
+                    ? `${route.distance_km} km`
+                    : "Pending routing provider"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Estimated duration:</span>
                 <span className="font-medium text-foreground">
-                  {route.duration_minutes != null ? `${route.duration_minutes} min` : "Pending routing provider"}
+                  {route.duration_minutes != null
+                    ? `${route.duration_minutes} min`
+                    : "Pending routing provider"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Corridor segments:</span>
                 <span className="font-medium text-foreground">
-                  {route.segments.length > 0 ? `${route.segments.length} segments` : "Pending road alignment"}
+                  {route.segments.length > 0
+                    ? `${route.segments.length} segments`
+                    : "Pending road alignment"}
                 </span>
               </div>
             </div>
@@ -165,7 +185,9 @@ export function JourneyResults({ response }: JourneyResultsProps) {
               <div className="flex justify-between">
                 <span>Active incidents:</span>
                 <span className="font-medium text-foreground">
-                  {live_context.incidents.length > 0 ? `${live_context.incidents.length} reported` : "None reported (provider pending)"}
+                  {live_context.incidents.length > 0
+                    ? `${live_context.incidents.length} reported`
+                    : "None reported (provider pending)"}
                 </span>
               </div>
             </div>
@@ -255,7 +277,8 @@ export function JourneyResults({ response }: JourneyResultsProps) {
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" aria-hidden="true" />
             <span>
-              Analysis evaluation generated at <strong className="text-foreground">{formattedTimestamp}</strong>
+              Analysis evaluation generated at{" "}
+              <strong className="text-foreground">{formattedTimestamp}</strong>
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -274,4 +297,3 @@ export function JourneyResults({ response }: JourneyResultsProps) {
     </div>
   );
 }
-
