@@ -19,6 +19,8 @@ from app.schemas.journey import (
     JourneyAnalyzeResponse,
     RouteGeometrySchema,
     RouteInfoSchema,
+    TrafficContextSchema,
+    WeatherContextSchema,
 )
 from app.services.geocoding_service import (
     GeocodingProviderError,
@@ -45,6 +47,20 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             "travel_date": "2026-09-02",
             "travel_time": "14:30",
         }
+        self.mock_weather = MagicMock()
+        self.mock_weather.get_weather.return_value = WeatherContextSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            condition="Clear sky",
+            temperature_c=20.0,
+        )
+        self.mock_traffic = MagicMock()
+        self.mock_traffic.get_traffic.return_value = TrafficContextSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            congestion_level="low",
+            description="A4: Good",
+        )
+        self.mock_incidents = MagicMock()
+        self.mock_incidents.get_incidents.return_value = (DataAvailabilityStatus.AVAILABLE, [])
 
     # ==========================================================================
     # Request Schema Validation Tests
@@ -292,7 +308,13 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             segments=[],
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
@@ -366,7 +388,13 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             provider="OSRM",
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
@@ -391,7 +419,13 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             provider="OSRM",
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
@@ -415,7 +449,13 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             provider="OSRM",
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
@@ -439,20 +479,25 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             provider="OSRM",
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
         self.assertEqual(resp.provenance.route_provider, "OSRM")
-        self.assertFalse(resp.provenance.live_data_available)
-        self.assertFalse(resp.provenance.historical_data_available)
+        self.assertTrue(resp.provenance.historical_data_available)
         self.assertFalse(resp.provenance.student_a_used)
-        self.assertFalse(resp.provenance.student_b_used)
-        self.assertFalse(resp.provenance.student_c_used)
+        self.assertTrue(resp.provenance.student_b_used)
+        self.assertTrue(resp.provenance.student_c_used)
         self.assertFalse(resp.provenance.gemini_used)
 
     def test_20_pending_states_for_unintegrated_sections(self) -> None:
-        """20. Live context, historical evidence, and LLM synthesis truthfully remain pending."""
+        """20. Safety assessment and LLM synthesis truthfully remain pending."""
         mock_geocoder = MagicMock(spec=NominatimGeocodingProvider)
         src_geo = GeocodedLocationSchema(latitude=51.4952, longitude=-0.1441, display_name="Victoria")
         dst_geo = GeocodedLocationSchema(latitude=51.4700, longitude=-0.4543, display_name="Heathrow")
@@ -469,13 +514,20 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             provider="OSRM",
         )
 
-        service = JourneyService(geocoding_provider=mock_geocoder, routing_provider=mock_router)
+        service = JourneyService(
+            geocoding_provider=mock_geocoder,
+            routing_provider=mock_router,
+            weather_provider=self.mock_weather,
+            traffic_provider=self.mock_traffic,
+            incident_provider=self.mock_incidents,
+        )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
 
-        self.assertEqual(resp.live_context.status, DataAvailabilityStatus.PENDING)
-        self.assertEqual(resp.historical_evidence.status, DataAvailabilityStatus.PENDING)
-        self.assertEqual(resp.safety_assessment.status, DataAvailabilityStatus.PENDING)
+        self.assertIn(resp.historical_evidence.status, (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL))
+        self.assertIn(resp.safety_assessment.status, (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL))
+        self.assertIsNone(resp.safety_assessment.overall_score)
+        self.assertIsNone(resp.safety_assessment.level)
         self.assertEqual(resp.llm_synthesis.status, DataAvailabilityStatus.PENDING)
 
 

@@ -74,6 +74,25 @@ class Settings(BaseSettings):
     ROUTING_BASE_URL: str = "https://router.project-osrm.org/route/v1/driving"
     ROUTING_TIMEOUT_SECONDS: float = 15.0
 
+    # Weather Provider Settings (Open-Meteo)
+    WEATHER_PROVIDER: str = "open-meteo"
+    WEATHER_BASE_URL: str = "https://api.open-meteo.com/v1/forecast"
+    WEATHER_TIMEOUT_SECONDS: float = 10.0
+
+    # Traffic Provider Settings (TfL / Open Corridor Feeds)
+    TRAFFIC_PROVIDER: str = "tfl"
+    TRAFFIC_BASE_URL: str = "https://api.tfl.gov.uk/Road"
+    TRAFFIC_TIMEOUT_SECONDS: float = 10.0
+
+    # Road Incident Provider Settings (TfL / Disruptions)
+    INCIDENT_PROVIDER: str = "tfl"
+    INCIDENT_BASE_URL: str = "https://api.tfl.gov.uk/Road/all/Disruption"
+    INCIDENT_TIMEOUT_SECONDS: float = 10.0
+
+    # Historical Model Corridor Matching Settings (Phase 4C)
+    HISTORICAL_CORRIDOR_RADIUS_METERS: float = 1000.0
+    HISTORICAL_COVERAGE_BOUNDS: tuple[float, float, float, float] = (50.0, 60.5, -6.5, 2.0)
+
     @property
     def BASE_DIR(self) -> Path:
         """Directory containing this config file (backend/app/)."""
