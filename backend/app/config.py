@@ -61,6 +61,19 @@ class Settings(BaseSettings):
     LLM_RETRY_BASE_DELAY: float = 1.0
     LLM_RETRY_MAX_DELAY: float = 4.0
 
+    # Geocoding Provider Settings
+    GEOCODING_PROVIDER: str = "nominatim"
+    GEOCODING_BASE_URL: str = "https://nominatim.openstreetmap.org/search"
+    GEOCODING_USER_AGENT: str = (
+        "Mozilla/5.0 (compatible; RoadSafetyAnalytics/1.0; +https://example.com/safety-analytics)"
+    )
+    GEOCODING_TIMEOUT_SECONDS: float = 10.0
+
+    # Routing Provider Settings
+    ROUTING_PROVIDER: str = "osrm"
+    ROUTING_BASE_URL: str = "https://router.project-osrm.org/route/v1/driving"
+    ROUTING_TIMEOUT_SECONDS: float = 15.0
+
     @property
     def BASE_DIR(self) -> Path:
         """Directory containing this config file (backend/app/)."""

@@ -93,17 +93,45 @@ class RouteSegmentSchema(BaseModel):
     length_km: Optional[float] = Field(None, ge=0.0, description="Segment length in kilometers.")
 
 
+class GeocodedLocationSchema(BaseModel):
+    """Resolved geographic coordinate and canonical address label."""
+
+    latitude: float = Field(..., description="Latitude in decimal degrees.")
+    longitude: float = Field(..., description="Longitude in decimal degrees.")
+    display_name: str = Field(..., description="Canonical location label returned by geocoder.")
+
+
+class RouteGeometrySchema(BaseModel):
+    """GeoJSON LineString geometry of the traversed route."""
+
+    type: str = Field("LineString", description="GeoJSON geometry type.")
+    coordinates: list[list[float]] = Field(
+        default_factory=list,
+        description="Array of [longitude, latitude] coordinate pairs along the route.",
+    )
+
+
 class RouteInfoSchema(BaseModel):
-    """Route alignment and topological geometric metadata."""
+    """Route alignment, topological geometric metadata, and resolved endpoints."""
 
     status: DataAvailabilityStatus = Field(
         DataAvailabilityStatus.PENDING,
         description="Status of routing provider computation.",
     )
+    source: Optional[GeocodedLocationSchema] = Field(
+        None, description="Resolved origin coordinates and display name."
+    )
+    destination: Optional[GeocodedLocationSchema] = Field(
+        None, description="Resolved destination coordinates and display name."
+    )
     distance_km: Optional[float] = Field(None, ge=0.0, description="Total journey distance in km.")
     duration_minutes: Optional[float] = Field(
         None, ge=0.0, description="Estimated traversal duration in minutes."
     )
+    geometry: Optional[RouteGeometrySchema] = Field(
+        None, description="GeoJSON LineString route geometry."
+    )
+    provider: Optional[str] = Field(None, description="Routing engine used (e.g. 'OSRM').")
     segments: list[RouteSegmentSchema] = Field(
         default_factory=list,
         description="Sequence of traversed road segments.",

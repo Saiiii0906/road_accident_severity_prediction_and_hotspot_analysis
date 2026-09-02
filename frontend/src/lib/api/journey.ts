@@ -28,10 +28,25 @@ export interface RouteSegment {
   length_km?: number | null;
 }
 
+export interface GeocodedLocation {
+  latitude: number;
+  longitude: number;
+  display_name: string;
+}
+
+export interface RouteGeometry {
+  type: string;
+  coordinates: [number, number][];
+}
+
 export interface RouteInfo {
   status: DataAvailabilityStatus;
+  source?: GeocodedLocation | null;
+  destination?: GeocodedLocation | null;
   distance_km?: number | null;
   duration_minutes?: number | null;
+  geometry?: RouteGeometry | null;
+  provider?: string | null;
   segments: RouteSegment[];
 }
 

@@ -125,7 +125,13 @@ export function JourneyResults({ response }: JourneyResultsProps) {
             <StatusBadge status={route.status} />
           </CardHeader>
           <CardContent className="space-y-3 pt-2 text-sm text-muted-foreground">
-            <div className="rounded-md bg-muted/40 p-3 border border-border/60 text-xs space-y-1">
+            <div className="space-y-2 rounded-md border border-border/60 bg-muted/40 p-3 text-xs">
+              <div className="flex justify-between">
+                <span>Routing engine:</span>
+                <span className="font-medium text-foreground">
+                  {route.provider || "Pending integration"}
+                </span>
+              </div>
               <div className="flex justify-between">
                 <span>Calculated distance:</span>
                 <span className="font-medium text-foreground">
@@ -143,13 +149,44 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Corridor segments:</span>
+                <span>Route geometry:</span>
                 <span className="font-medium text-foreground">
-                  {route.segments.length > 0
-                    ? `${route.segments.length} segments`
-                    : "Pending road alignment"}
+                  {route.geometry?.coordinates?.length
+                    ? `${route.geometry.coordinates.length} coordinate waypoints`
+                    : "Pending geometry"}
                 </span>
               </div>
+              {route.source?.display_name && (
+                <div className="border-t border-border/40 pt-1.5">
+                  <span className="text-muted-foreground">Resolved origin: </span>
+                  <span className="font-medium text-foreground line-clamp-1">
+                    {route.source.display_name} ({route.source.latitude.toFixed(4)},{" "}
+                    {route.source.longitude.toFixed(4)})
+                  </span>
+                </div>
+              )}
+              {route.destination?.display_name && (
+                <div className="pt-1">
+                  <span className="text-muted-foreground">Resolved destination: </span>
+                  <span className="font-medium text-foreground line-clamp-1">
+                    {route.destination.display_name} ({route.destination.latitude.toFixed(4)},{" "}
+                    {route.destination.longitude.toFixed(4)})
+                  </span>
+                </div>
+              )}
+              {route.segments.length > 0 && (
+                <div className="border-t border-border/40 pt-1.5">
+                  <span className="text-muted-foreground">Corridor roads: </span>
+                  <span className="font-medium text-foreground">
+                    {route.segments
+                      .map((s) => s.name)
+                      .filter(Boolean)
+                      .slice(0, 4)
+                      .join(" → ")}
+                    {route.segments.length > 4 ? ` (+${route.segments.length - 4} more)` : ""}
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

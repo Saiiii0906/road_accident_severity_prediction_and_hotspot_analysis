@@ -7,10 +7,20 @@ Exposes:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.schemas.journey import JourneyAnalyzeRequest, JourneyAnalyzeResponse
+from app.services.geocoding_service import (
+    GeocodingProviderError,
+    GeocodingTimeoutError,
+    LocationNotFoundError,
+)
 from app.services.journey_service import JourneyService
+from app.services.routing_service import (
+    RouteNotFoundError,
+    RoutingProviderError,
+    RoutingTimeoutError,
+)
 
 router = APIRouter(tags=["Journey Safety Analysis"])
 
@@ -38,5 +48,25 @@ def analyze_journey(
     service: JourneyServiceDep,
 ) -> JourneyAnalyzeResponse:
     """Analyze safety risks and generate recommendations for a specified journey."""
-    return service.analyze_journey(request)
-
+    try:
+        return service.analyze_journey(request)
+    except LocationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except RouteNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (GeocodingTimeoutError, RoutingTimeoutError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=str(exc),
+        ) from exc
+    except (GeocodingProviderError, RoutingProviderError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
