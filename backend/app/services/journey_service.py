@@ -32,6 +32,17 @@ from app.services.geocoding_service import (
     NominatimGeocodingProvider,
 )
 from app.services.incident_service import IncidentProvider, TfLIncidentProvider
+from app.services.journey_prompt_service import JourneyPromptService
+from app.services.llm_provider import (
+    LLMAuthenticationError,
+    LLMConfigurationError,
+    LLMProvider,
+    LLMProviderError,
+    LLMRateLimitError,
+    LLMTimeoutError,
+    LLMValidationError,
+)
+from app.services.llm_provider_router import LLMProviderRouter
 from app.services.routing_service import OSRMRoutingProvider, RoutingProvider
 from app.services.safety_assessment_service import SafetyAssessmentService
 from app.services.traffic_service import TfLTrafficProvider, TrafficProvider
@@ -52,6 +63,8 @@ class JourneyService:
         incident_provider: Optional[IncidentProvider] = None,
         corridor_matching_service: Optional[CorridorMatchingService] = None,
         safety_assessment_service: Optional[SafetyAssessmentService] = None,
+        llm_provider: Optional[LLMProvider] = None,
+        prompt_service: type[JourneyPromptService] = JourneyPromptService,
     ) -> None:
         self.geocoder = geocoding_provider or NominatimGeocodingProvider()
         self.router = routing_provider or OSRMRoutingProvider()
@@ -60,6 +73,8 @@ class JourneyService:
         self.incidents = incident_provider or TfLIncidentProvider()
         self.corridor_matcher = corridor_matching_service or CorridorMatchingService()
         self.safety_assessor = safety_assessment_service or SafetyAssessmentService()
+        self.llm_provider = llm_provider or LLMProviderRouter()
+        self.prompt_service = prompt_service
 
     def analyze_journey(self, request: JourneyAnalyzeRequest) -> JourneyAnalyzeResponse:
         """Process a journey request and return a structured safety assessment."""
@@ -97,8 +112,8 @@ class JourneyService:
             route_info, live_context, historical_evidence
         )
 
-        # 5. Multimodal LLM synthesis subsystem (Gemini pending Phase 4D)
-        llm_synthesis = self._synthesize_with_llm(
+        # 5. Multimodal LLM synthesis subsystem (Phase 4E Gemini Grounded Synthesis)
+        llm_synthesis, gemini_used = self._synthesize_with_llm(
             journey_details, route_info, live_context, historical_evidence, safety_assessment
         )
 
@@ -117,7 +132,7 @@ class JourneyService:
             student_a_used=student_a_used,
             student_b_used=student_b_used,
             student_c_used=student_c_used,
-            gemini_used=False,
+            gemini_used=gemini_used,
         )
 
         return JourneyAnalyzeResponse(
@@ -277,11 +292,73 @@ class JourneyService:
         live: LiveContextSchema,
         historical: HistoricalEvidenceSchema,
         assessment: SafetyAssessmentSchema,
-    ) -> LLMSynthesisSchema:
+    ) -> tuple[LLMSynthesisSchema, bool]:
         """Generate structured AI decision-support explanation and safety precautions."""
-        # Phase 4C: Gemini synthesis pending Phase 4D
-        return LLMSynthesisSchema(
-            status=DataAvailabilityStatus.PENDING,
-            summary=None,
-            recommendations=[],
+        if route.status == DataAvailabilityStatus.UNAVAILABLE:
+            return (
+                LLMSynthesisSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    headline=None,
+                    summary=None,
+                    key_findings=[],
+                    recommendations=[],
+                    limitations=["Route corridor resolution failed; AI synthesis could not be performed."],
+                ),
+                False,
+            )
+
+        prompt = self.prompt_service.build_prompt(
+            journey, route, live, historical, assessment
         )
+
+        try:
+            raw_synthesis = self.llm_provider.generate_structured_report(
+                prompt=prompt,
+                schema_cls=LLMSynthesisSchema,
+            )
+            # Align output status with deterministic assessment availability
+            if assessment.status in (DataAvailabilityStatus.PARTIAL, DataAvailabilityStatus.UNAVAILABLE):
+                raw_synthesis.status = assessment.status
+            else:
+                raw_synthesis.status = DataAvailabilityStatus.AVAILABLE
+
+            return raw_synthesis, True
+        except (LLMConfigurationError, LLMAuthenticationError) as exc:
+            logger.warning("LLM synthesis skipped or unconfigured: %s", exc)
+            return (
+                LLMSynthesisSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    headline=None,
+                    summary=None,
+                    key_findings=[],
+                    recommendations=[],
+                    limitations=["AI synthesis is currently unconfigured or unavailable in this environment."],
+                ),
+                False,
+            )
+        except (LLMTimeoutError, LLMRateLimitError, LLMProviderError, LLMValidationError) as exc:
+            logger.error("LLM synthesis failed: %s", exc)
+            return (
+                LLMSynthesisSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    headline=None,
+                    summary=None,
+                    key_findings=[],
+                    recommendations=[],
+                    limitations=[f"AI synthesis temporarily unavailable: {exc}"],
+                ),
+                False,
+            )
+        except Exception as exc:
+            logger.error("Unexpected error during LLM synthesis: %s", exc, exc_info=True)
+            return (
+                LLMSynthesisSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    headline=None,
+                    summary=None,
+                    key_findings=[],
+                    recommendations=[],
+                    limitations=["AI synthesis encountered an unexpected internal error."],
+                ),
+                False,
+            )

@@ -17,6 +17,7 @@ from app.schemas.journey import (
     GeocodedLocationSchema,
     JourneyAnalyzeRequest,
     JourneyAnalyzeResponse,
+    LLMSynthesisSchema,
     RouteGeometrySchema,
     RouteInfoSchema,
     TrafficContextSchema,
@@ -61,6 +62,15 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
         )
         self.mock_incidents = MagicMock()
         self.mock_incidents.get_incidents.return_value = (DataAvailabilityStatus.AVAILABLE, [])
+        self.mock_llm = MagicMock()
+        self.mock_llm.generate_structured_report.return_value = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Normal Corridor Flow",
+            summary="Journey proceeds under normal conditions.",
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
 
     # ==========================================================================
     # Request Schema Validation Tests
@@ -314,6 +324,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -394,6 +405,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -425,6 +437,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -455,6 +468,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -485,6 +499,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -494,10 +509,10 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
         self.assertFalse(resp.provenance.student_a_used)
         self.assertTrue(resp.provenance.student_b_used)
         self.assertTrue(resp.provenance.student_c_used)
-        self.assertFalse(resp.provenance.gemini_used)
+        self.assertTrue(resp.provenance.gemini_used)
 
     def test_20_pending_states_for_unintegrated_sections(self) -> None:
-        """20. Safety assessment and LLM synthesis truthfully remain pending."""
+        """20. Safety assessment and LLM synthesis are integrated and non-arbitrary."""
         mock_geocoder = MagicMock(spec=NominatimGeocodingProvider)
         src_geo = GeocodedLocationSchema(latitude=51.4952, longitude=-0.1441, display_name="Victoria")
         dst_geo = GeocodedLocationSchema(latitude=51.4700, longitude=-0.4543, display_name="Heathrow")
@@ -520,6 +535,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
             weather_provider=self.mock_weather,
             traffic_provider=self.mock_traffic,
             incident_provider=self.mock_incidents,
+            llm_provider=self.mock_llm,
         )
         req = JourneyAnalyzeRequest.model_validate(self.valid_payload)
         resp = service.analyze_journey(req)
@@ -528,7 +544,7 @@ class TestJourneySafetyAnalysis(unittest.TestCase):
         self.assertIn(resp.safety_assessment.status, (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL))
         self.assertIsNone(resp.safety_assessment.overall_score)
         self.assertIsNone(resp.safety_assessment.level)
-        self.assertEqual(resp.llm_synthesis.status, DataAvailabilityStatus.PENDING)
+        self.assertEqual(resp.llm_synthesis.status, DataAvailabilityStatus.AVAILABLE)
 
 
 if __name__ == "__main__":

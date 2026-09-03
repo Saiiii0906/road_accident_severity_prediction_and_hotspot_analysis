@@ -8,8 +8,7 @@ evidence (Students A, B, C), and grounded Gemini synthesis.
 
 from datetime import date, datetime, time, timezone
 from enum import Enum
-from typing import Any, Optional
-
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -403,15 +402,64 @@ class SafetyAssessmentSchema(BaseModel):
     )
 
 
+LLMKeyFindingSeverity = Literal[
+    "critical",
+    "high",
+    "moderate",
+    "low",
+    "unknown",
+]
+
+
+class LLMKeyFindingSchema(BaseModel):
+    """A synthesized key risk or operational finding grounded in multi-source evidence."""
+
+    title: str = Field(
+        ...,
+        description="Concise finding headline.",
+    )
+    description: str = Field(
+        ...,
+        description="Evidence-grounded finding explanation.",
+    )
+    severity: LLMKeyFindingSeverity = Field(
+        ...,
+        description="Severity level ('critical', 'high', 'moderate', 'low', 'unknown').",
+    )
+    evidence_sources: list[str] = Field(
+        default_factory=list,
+        description="Data sources or models supporting this finding.",
+    )
+
+
+class LLMRecommendationSchema(BaseModel):
+    """An actionable, evidence-linked safety precaution or navigation recommendation."""
+
+    action: str = Field(..., description="Actionable safety precaution or navigation guidance.")
+    reason: str = Field(..., description="Empirical rationale grounded in observed evidence.")
+    evidence_sources: list[str] = Field(
+        default_factory=list, description="Data sources or models backing this recommendation."
+    )
+
+
 class LLMSynthesisSchema(BaseModel):
     """Multimodal generative safety explanation and actionable recommendations."""
 
     status: DataAvailabilityStatus = Field(
         DataAvailabilityStatus.PENDING,
-        description="Status of LLM synthesis pipeline.",
+        description="Status of LLM synthesis pipeline ('available', 'partial', 'unavailable', 'pending').",
     )
+    headline: Optional[str] = Field(None, description="Executive takeaway headline.")
     summary: Optional[str] = Field(None, description="Executive AI narrative summary.")
-    recommendations: list[str] = Field(default_factory=list, description="Actionable driver or dispatcher precautions.")
+    key_findings: list[LLMKeyFindingSchema] = Field(
+        default_factory=list, description="Key empirical and environmental risk findings."
+    )
+    recommendations: list[LLMRecommendationSchema] = Field(
+        default_factory=list, description="Actionable driver or dispatcher precautions."
+    )
+    limitations: list[str] = Field(
+        default_factory=list, description="Explicit notes on missing data feeds or boundary constraints."
+    )
 
 
 class JourneyProvenanceSchema(BaseModel):

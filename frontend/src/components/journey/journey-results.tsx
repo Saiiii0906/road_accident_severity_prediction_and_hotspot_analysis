@@ -8,6 +8,7 @@ import {
   Cpu,
   Info,
   Layers,
+  Lightbulb,
   Navigation,
   Route as RouteIcon,
   ShieldAlert,
@@ -154,7 +155,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
         </CardHeader>
       </Card>
 
-      {/* Primary: Deterministic Journey Safety Assessment (Phase 4D) */}
+      {/* 1. Primary: Deterministic Journey Safety Assessment (Phase 4D) */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-border pb-4">
           <div className="space-y-1">
@@ -291,6 +292,155 @@ export function JourneyResults({ response }: JourneyResultsProps) {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. Secondary: Grounded Gemini Journey Safety Synthesis (Phase 4E) */}
+      <Card className="border-border bg-card shadow-sm">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-border pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+                Journey Safety Summary
+              </CardTitle>
+              <Badge variant="secondary" className="text-xs font-normal">
+                Grounded AI Synthesis
+              </Badge>
+            </div>
+            <CardDescription className="text-xs text-muted-foreground">
+              Explainable narrative synthesis and actionable driver guidance strictly synthesized
+              from verified telemetry.
+            </CardDescription>
+          </div>
+          <StatusBadge status={llm_synthesis.status} />
+        </CardHeader>
+
+        <CardContent className="space-y-5 pt-4">
+          {llm_synthesis.status === "unavailable" ? (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 font-medium text-destructive">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                <span>AI Narrative Synthesis Unavailable</span>
+              </div>
+              <p className="mt-1">
+                Grounded AI synthesis is currently unavailable for this itinerary. The deterministic
+                safety assessment and evidentiary metrics above remain fully active and
+                authoritative.
+              </p>
+              {llm_synthesis.limitations.length > 0 && (
+                <ul className="mt-2 list-inside list-disc space-y-0.5 text-[11px]">
+                  {llm_synthesis.limitations.map((lim, idx) => (
+                    <li key={idx}>{lim}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Headline & Summary */}
+              {llm_synthesis.headline && (
+                <h3 className="text-sm font-bold text-foreground">{llm_synthesis.headline}</h3>
+              )}
+              <div className="rounded-md border border-border/70 bg-muted/20 p-3.5 text-xs text-foreground">
+                <p className="leading-relaxed">
+                  {llm_synthesis.summary ||
+                    "AI narrative synthesis will summarize verified conditions upon pipeline execution."}
+                </p>
+              </div>
+
+              {/* Key Findings */}
+              {llm_synthesis.key_findings.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Key Synthesized Findings
+                  </h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {llm_synthesis.key_findings.map((kf, idx) => (
+                      <div
+                        key={idx}
+                        className="space-y-1.5 rounded-md border border-border/50 bg-background/60 p-3 text-xs shadow-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-foreground">{kf.title}</span>
+                          <SeverityBadge severity={kf.severity} />
+                        </div>
+                        <p className="text-muted-foreground leading-snug">{kf.description}</p>
+                        {kf.evidence_sources.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-muted-foreground">
+                            <span>Evidence:</span>
+                            {kf.evidence_sources.map((src, sIdx) => (
+                              <Badge
+                                key={sIdx}
+                                variant="outline"
+                                className="px-1.5 py-0 text-[9px]"
+                              >
+                                {src}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actionable Recommendations */}
+              {llm_synthesis.recommendations.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Lightbulb className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                    <span>Actionable Precautions & Guidance</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {llm_synthesis.recommendations.map((rec, idx) => (
+                      <div
+                        key={idx}
+                        className="space-y-1 rounded-md border border-border/40 bg-muted/15 p-3 text-xs"
+                      >
+                        <div className="font-semibold text-foreground">
+                          {idx + 1}. {rec.action}
+                        </div>
+                        <p className="text-muted-foreground leading-tight">{rec.reason}</p>
+                        {rec.evidence_sources.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-muted-foreground">
+                            <span>Grounding:</span>
+                            {rec.evidence_sources.map((src, sIdx) => (
+                              <Badge
+                                key={sIdx}
+                                variant="outline"
+                                className="px-1.5 py-0 text-[9px]"
+                              >
+                                {src}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Disclosures & Limitations */}
+              {llm_synthesis.limitations.length > 0 && (
+                <div className="space-y-1 rounded border border-border/30 bg-muted/10 p-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5 font-medium text-foreground">
+                    <Info className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                    <span>Synthesis Disclosures & Boundary Limitations</span>
+                  </div>
+                  <ul className="list-inside list-disc space-y-0.5 pl-1">
+                    {llm_synthesis.limitations.map((lim, idx) => (
+                      <li key={idx} className="leading-tight">
+                        {lim}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -604,7 +754,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
           </CardContent>
         </Card>
 
-        {/* 4. Grounded AI Synthesis */}
+        {/* 4. Grounded AI Synthesis Summary */}
         <Card className="border-border bg-card shadow-sm">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
             <div className="space-y-1">
@@ -623,7 +773,13 @@ export function JourneyResults({ response }: JourneyResultsProps) {
               <div className="flex justify-between">
                 <span>Synthesis status:</span>
                 <span className="font-medium text-foreground">
-                  {llm_synthesis.summary ? "Generated" : "Pending multi-source grounding"}
+                  {llm_synthesis.status === "available"
+                    ? "Active"
+                    : llm_synthesis.status === "partial"
+                      ? "Partial Context"
+                      : llm_synthesis.status === "unavailable"
+                        ? "Unavailable"
+                        : "Pending"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -631,9 +787,14 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 <span className="font-medium text-foreground">
                   {llm_synthesis.recommendations.length > 0
                     ? `${llm_synthesis.recommendations.length} precautions`
-                    : "Pending pipeline execution"}
+                    : "None generated"}
                 </span>
               </div>
+              {llm_synthesis.headline && (
+                <div className="border-t border-border/40 pt-1.5 text-foreground font-medium">
+                  {llm_synthesis.headline}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -669,7 +830,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 : "Unavailable"}
             </span>
             <span className="rounded border border-border bg-muted px-2 py-0.5">
-              Gemini synthesis: {provenance.gemini_used ? "Active" : "Pending"}
+              Gemini synthesis: {provenance.gemini_used ? "Active" : "Unavailable/Pending"}
             </span>
           </div>
         </CardContent>

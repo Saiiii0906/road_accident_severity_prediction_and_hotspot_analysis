@@ -209,10 +209,28 @@ export interface SafetyAssessment {
   limitations: string[];
 }
 
+export type LLMKeyFindingSeverity = "critical" | "high" | "moderate" | "low" | "unknown";
+
+export interface LLMKeyFinding {
+  title: string;
+  description: string;
+  severity: LLMKeyFindingSeverity;
+  evidence_sources: string[];
+}
+
+export interface LLMRecommendation {
+  action: string;
+  reason: string;
+  evidence_sources: string[];
+}
+
 export interface LLMSynthesis {
   status: DataAvailabilityStatus;
+  headline?: string | null;
   summary?: string | null;
-  recommendations: string[];
+  key_findings: LLMKeyFinding[];
+  recommendations: LLMRecommendation[];
+  limitations: string[];
 }
 
 export interface JourneyProvenance {

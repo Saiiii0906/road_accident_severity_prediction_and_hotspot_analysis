@@ -21,6 +21,7 @@ from app.schemas.journey import (
     JourneyAnalyzeRequest,
     JourneyAnalyzeResponse,
     LiveContextSchema,
+    LLMSynthesisSchema,
     RouteGeometrySchema,
     RouteInfoSchema,
     RouteSegmentSchema,
@@ -333,6 +334,16 @@ class TestHistoricalCorridorMatching(unittest.TestCase):
             True,  # student_c_used
         )
 
+        mock_llm = MagicMock()
+        mock_llm.generate_structured_report.return_value = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Summary",
+            summary="Summary text",
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
+
         service = JourneyService(
             geocoding_provider=MagicMock(),
             routing_provider=MagicMock(),
@@ -340,6 +351,7 @@ class TestHistoricalCorridorMatching(unittest.TestCase):
             traffic_provider=MagicMock(),
             incident_provider=MagicMock(),
             corridor_matching_service=mock_matcher,
+            llm_provider=mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.uk_route)
         service._fetch_live_context = MagicMock(

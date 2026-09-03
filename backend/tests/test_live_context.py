@@ -14,6 +14,7 @@ from app.schemas.journey import (
     IncidentContextSchema,
     JourneyAnalyzeRequest,
     JourneyAnalyzeResponse,
+    LLMSynthesisSchema,
     RouteGeometrySchema,
     RouteInfoSchema,
     RouteSegmentSchema,
@@ -42,6 +43,15 @@ class TestLiveContextSubsystem(unittest.TestCase):
     """Test suite covering weather, traffic, incidents, and multi-source live context."""
 
     def setUp(self) -> None:
+        self.mock_llm = MagicMock()
+        self.mock_llm.generate_structured_report.return_value = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Summary",
+            summary="Summary text",
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
         self.sample_route = RouteInfoSchema(
             status=DataAvailabilityStatus.AVAILABLE,
             source=GeocodedLocationSchema(
@@ -62,10 +72,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
                 ],
             ),
             provider="OSRM",
-            segments=[
-                RouteSegmentSchema(segment_id="1", name="A4", length_km=15.0),
-                RouteSegmentSchema(segment_id="2", name="M4", length_km=14.2),
-            ],
+            segments=[RouteSegmentSchema(name="A4", length_km=20.0)],
         )
         self.travel_date = date(2026, 9, 2)
         self.travel_time = time(14, 30)
@@ -289,6 +296,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=mock_weather,
             traffic_provider=mock_traffic,
             incident_provider=mock_incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -328,6 +336,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=mock_weather,
             traffic_provider=mock_traffic,
             incident_provider=mock_incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -359,6 +368,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=mock_weather,
             traffic_provider=mock_traffic,
             incident_provider=mock_incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -392,6 +402,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=mock_weather,
             traffic_provider=mock_traffic,
             incident_provider=mock_incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -434,6 +445,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -459,6 +471,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -486,6 +499,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -516,6 +530,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -544,6 +559,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
@@ -568,6 +584,7 @@ class TestLiveContextSubsystem(unittest.TestCase):
             weather_provider=weather,
             traffic_provider=traffic,
             incident_provider=incidents,
+            llm_provider=self.mock_llm,
         )
         service._resolve_route = MagicMock(return_value=self.sample_route)
 
