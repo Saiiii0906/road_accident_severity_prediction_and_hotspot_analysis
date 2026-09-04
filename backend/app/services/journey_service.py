@@ -7,6 +7,7 @@ grounding (Student B DBSCAN hotspots, Student C GNN road risk), and explainable 
 """
 
 import logging
+import re
 from typing import Optional
 
 from app.schemas.journey import (
@@ -49,6 +50,78 @@ from app.services.traffic_service import TfLTrafficProvider, TrafficProvider
 from app.services.weather_service import OpenMeteoWeatherProvider, WeatherProvider
 
 logger = logging.getLogger(__name__)
+
+
+# Meta-prompt terms and prompt artifacts that must never appear in user-facing safety prose
+FORBIDDEN_META_WORDS: frozenset[str] = frozenset({
+    "schema",
+    "prompt",
+    "validation",
+    "payload",
+    "framework",
+    "parsing",
+    "specification",
+    "matrix",
+    "workflow",
+    "subsystem",
+})
+
+FORBIDDEN_PROMPT_PHRASES: tuple[str, ...] = (
+    "SYSTEM_INSTRUCTIONS",
+    "CRITICAL GROUNDEDNESS",
+    "EVALUATION EVIDENCE",
+    "TASK:",
+    "JSON schema",
+    "```json",
+    "```",
+    '"type": "string"',
+    '"properties":',
+)
+
+STOP_WORDS: frozenset[str] = frozenset({
+    "the", "and", "a", "an", "of", "to", "in", "is", "for", "on", "with",
+    "by", "at", "from", "as", "into", "or", "it", "its", "that", "this",
+})
+
+
+def _check_text_integrity(text: Optional[str], field_name: str, max_length: int) -> None:
+    """Validate a single synthesized text string for prompt leakage and degeneration."""
+    if not text or not text.strip():
+        return
+
+    if len(text) > max_length:
+        raise LLMValidationError(
+            f"Field '{field_name}' exceeds maximum allowed length ({len(text)} > {max_length})."
+        )
+
+    # 1. Check for prompt artifacts or code fence leakage
+    for phrase in FORBIDDEN_PROMPT_PHRASES:
+        if phrase in text:
+            raise LLMValidationError(
+                f"Field '{field_name}' contains forbidden prompt/schema artifact: '{phrase}'."
+            )
+
+    # 2. Check for meta-vocabulary clusters (>= 2 distinct forbidden meta-words)
+    lower_text = text.lower()
+    found_meta = {w for w in FORBIDDEN_META_WORDS if re.search(r"\b" + re.escape(w) + r"\b", lower_text)}
+    if len(found_meta) >= 2:
+        raise LLMValidationError(
+            f"Field '{field_name}' contains meta-prompt vocabulary leakage: {sorted(found_meta)}."
+        )
+
+    # 3. Check for repetitive word looping (degeneration failure)
+    tokens = [w for w in re.findall(r"\b[a-zA-Z]{3,}\b", lower_text) if w not in STOP_WORDS]
+    if len(tokens) >= 15:
+        window_size = 20
+        for i in range(len(tokens) - window_size + 1):
+            window = tokens[i : i + window_size]
+            counts: dict[str, int] = {}
+            for tok in window:
+                counts[tok] = counts.get(tok, 0) + 1
+                if counts[tok] >= 5:
+                    raise LLMValidationError(
+                        f"Field '{field_name}' exhibits repetitive token loop on word '{tok}'."
+                    )
 
 
 class JourneyService:
@@ -285,6 +358,27 @@ class JourneyService:
         """Compute deterministic safety classification and index."""
         return self.safety_assessor.assess(route, live, historical)
 
+    def _validate_synthesis_integrity(self, synthesis: LLMSynthesisSchema) -> None:
+        """Defensively inspect LLM synthesis to ensure zero prompt leakage or token degeneration."""
+        if synthesis.headline:
+            if "\n" in synthesis.headline:
+                raise LLMValidationError("Headline must be a single-line string.")
+            _check_text_integrity(synthesis.headline, "headline", max_length=300)
+
+        if synthesis.summary:
+            _check_text_integrity(synthesis.summary, "summary", max_length=2000)
+
+        for idx, kf in enumerate(synthesis.key_findings):
+            _check_text_integrity(kf.title, f"key_findings[{idx}].title", max_length=200)
+            _check_text_integrity(kf.description, f"key_findings[{idx}].description", max_length=1000)
+
+        for idx, rec in enumerate(synthesis.recommendations):
+            _check_text_integrity(rec.action, f"recommendations[{idx}].action", max_length=300)
+            _check_text_integrity(rec.reason, f"recommendations[{idx}].reason", max_length=1000)
+
+        for idx, lim in enumerate(synthesis.limitations):
+            _check_text_integrity(lim, f"limitations[{idx}]", max_length=500)
+
     def _synthesize_with_llm(
         self,
         journey: JourneyDetailsSchema,
@@ -315,7 +409,12 @@ class JourneyService:
             raw_synthesis = self.llm_provider.generate_structured_report(
                 prompt=prompt,
                 schema_cls=LLMSynthesisSchema,
+                system_instruction=self.prompt_service.SYSTEM_INSTRUCTIONS,
             )
+
+            # Defensive integrity validation: reject corrupted/looping outputs
+            self._validate_synthesis_integrity(raw_synthesis)
+
             # Align output status with deterministic assessment availability
             if assessment.status in (DataAvailabilityStatus.PARTIAL, DataAvailabilityStatus.UNAVAILABLE):
                 raw_synthesis.status = assessment.status
@@ -336,8 +435,8 @@ class JourneyService:
                 ),
                 False,
             )
-        except (LLMTimeoutError, LLMRateLimitError, LLMProviderError, LLMValidationError) as exc:
-            logger.error("LLM synthesis failed: %s", exc)
+        except LLMValidationError as exc:
+            logger.error("LLM synthesis failed output validation/integrity check: %s", exc)
             return (
                 LLMSynthesisSchema(
                     status=DataAvailabilityStatus.UNAVAILABLE,
@@ -345,7 +444,24 @@ class JourneyService:
                     summary=None,
                     key_findings=[],
                     recommendations=[],
-                    limitations=[f"AI synthesis temporarily unavailable: {exc}"],
+                    limitations=[
+                        "AI synthesis was unavailable because the generated response did not meet the required output format. The evidence-based journey assessment remains available."
+                    ],
+                ),
+                False,
+            )
+        except (LLMTimeoutError, LLMRateLimitError, LLMProviderError) as exc:
+            logger.error("LLM synthesis provider failure: %s", exc)
+            return (
+                LLMSynthesisSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    headline=None,
+                    summary=None,
+                    key_findings=[],
+                    recommendations=[],
+                    limitations=[
+                        "AI synthesis is temporarily unavailable. The evidence-based journey assessment remains available."
+                    ],
                 ),
                 False,
             )
@@ -358,7 +474,9 @@ class JourneyService:
                     summary=None,
                     key_findings=[],
                     recommendations=[],
-                    limitations=["AI synthesis encountered an unexpected internal error."],
+                    limitations=[
+                        "AI synthesis is temporarily unavailable. The evidence-based journey assessment remains available."
+                    ],
                 ),
                 False,
             )

@@ -1,4 +1,6 @@
+import { useState, useCallback } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
   Calendar,
   CheckCircle2,
@@ -6,17 +8,22 @@ import {
   Clock3,
   CloudSun,
   Cpu,
+  Download,
   Info,
   Layers,
   Lightbulb,
+  Loader2,
   Navigation,
   Route as RouteIcon,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DataAvailabilityStatus, JourneyAnalyzeResponse } from "@/lib/api/journey";
+import { exportJourneySafetyPdf, sanitizePublicModelNames } from "@/lib/pdf/journey-pdf-generator";
 
 interface JourneyResultsProps {
   response: JourneyAnalyzeResponse;
@@ -119,6 +126,23 @@ export function JourneyResults({ response }: JourneyResultsProps) {
     provenance,
   } = response;
 
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExportPdf = useCallback(() => {
+    try {
+      setIsExporting(true);
+      setExportError(null);
+      exportJourneySafetyPdf(response);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to generate Journey Safety Analysis PDF.";
+      setExportError(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [response]);
+
   const formattedTimestamp = new Date(provenance.analysis_timestamp).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -126,6 +150,14 @@ export function JourneyResults({ response }: JourneyResultsProps) {
 
   return (
     <div className="space-y-6">
+      {/* Export Error Notification */}
+      {exportError && (
+        <Alert variant="destructive" className="border-destructive/40 bg-destructive/10 text-xs">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>{exportError}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Journey Itinerary Header */}
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="border-b border-border pb-4">
@@ -150,6 +182,21 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                 <span>{journey.travel_time}</span>
               </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 border-border/80 text-xs font-medium shadow-xs hover:bg-muted"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                aria-label="Export Journey Safety Analysis PDF"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden="true" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                )}
+                <span>{isExporting ? "Exporting…" : "Export PDF"}</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -205,7 +252,10 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                     </div>
                     <p className="text-muted-foreground leading-snug">{factor.description}</p>
                     <div className="pt-1 text-[10px] text-muted-foreground/80">
-                      Source: <span className="font-medium text-foreground">{factor.source}</span>
+                      Source:{" "}
+                      <span className="font-medium text-foreground">
+                        {sanitizePublicModelNames(factor.source)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -226,7 +276,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                     className="rounded-md border border-border/40 bg-muted/20 p-2.5 text-xs"
                   >
                     <div className="flex items-center justify-between font-medium text-foreground">
-                      <span className="truncate">{ev.source}</span>
+                      <span className="truncate">{sanitizePublicModelNames(ev.source)}</span>
                       <span className="text-primary font-semibold">{ev.value}</span>
                     </div>
                     <p className="mt-1 text-[11px] text-muted-foreground leading-tight">
@@ -375,7 +425,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                                 variant="outline"
                                 className="px-1.5 py-0 text-[9px]"
                               >
-                                {src}
+                                {sanitizePublicModelNames(src)}
                               </Badge>
                             ))}
                           </div>
@@ -412,7 +462,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                                 variant="outline"
                                 className="px-1.5 py-0 text-[9px]"
                               >
-                                {src}
+                                {sanitizePublicModelNames(src)}
                               </Badge>
                             ))}
                           </div>
@@ -614,7 +664,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 Historical ML Grounding
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Empirical models: Student B (DBSCAN Hotspots) & Student C (GNN Network Risk).
+                Empirical models: Hotspot Explorer (DBSCAN) & Road Risk Analysis (GNN).
               </CardDescription>
             </div>
             <StatusBadge status={historical_evidence.status} />
@@ -633,10 +683,10 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                 </span>
               </div>
 
-              {/* Student B Hotspots */}
+              {/* Hotspot Explorer (DBSCAN) */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between font-medium text-foreground">
-                  <span>Student B (DBSCAN Hotspots):</span>
+                  <span>Hotspot Explorer (DBSCAN):</span>
                   <span className="text-primary font-semibold">
                     {historical_evidence.student_b != null
                       ? `${historical_evidence.student_b.hotspots_on_route} on corridor`
@@ -680,10 +730,10 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                   )}
               </div>
 
-              {/* Student C GNN Risk */}
+              {/* Road Risk Analysis (GNN) */}
               <div className="space-y-1 border-t border-border/40 pt-2">
                 <div className="flex items-center justify-between font-medium text-foreground">
-                  <span>Student C (RoadRiskGNN):</span>
+                  <span>Road Risk Analysis (GNN):</span>
                   <span className="text-primary font-semibold">
                     {historical_evidence.student_c != null
                       ? `${historical_evidence.student_c.segments_on_route} segments`
@@ -706,7 +756,7 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                           </strong>
                         </span>
                         <span>
-                          Peak risk:{" "}
+                          Peak structural risk index:{" "}
                           <strong className="text-foreground">
                             {historical_evidence.student_c.peak_gnn_risk != null
                               ? `${Math.round(historical_evidence.student_c.peak_gnn_risk * 100)}%`
@@ -742,11 +792,11 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                   )}
               </div>
 
-              {/* Student A Note */}
+              {/* Severity Prediction Note */}
               <div className="border-t border-border/40 pt-2 text-[10px] text-muted-foreground">
-                <span>Student A (Severity): </span>
+                <span>Severity Prediction: </span>
                 <span>
-                  Individual collision model — not applicable to prospective route corridor
+                  Individual collision severity model — not applicable to prospective route corridor
                   traversal.
                 </span>
               </div>

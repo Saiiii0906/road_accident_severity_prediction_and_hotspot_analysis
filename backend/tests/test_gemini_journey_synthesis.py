@@ -598,6 +598,344 @@ class TestGeminiJourneySynthesis(unittest.TestCase):
         self.assertNotIn("overall_score", synthesis.model_dump())
         self.assertNotIn("level", synthesis.model_dump())
 
+    # ==========================================================================
+    # Phase 4 Regression Tests: Output Integrity & Error Sanitization (A - I)
+    # ==========================================================================
+
+    def test_phase4_test_a_valid_structured_gemini_response(self) -> None:
+        """Test A: Valid structured Gemini response returns clean synthesis without garbage."""
+        mock_llm = MagicMock(spec=LLMProvider)
+        valid_response = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Victoria to Heathrow: Congestion on A4 with Active Roadworks",
+            summary="Traffic along the A4 corridor exhibits heavy congestion with 15-minute delays.",
+            key_findings=[
+                LLMKeyFindingSchema(
+                    title="A4 Congestion",
+                    description="15-minute delays reported.",
+                    severity="high",
+                    evidence_sources=["TfL Road Network"],
+                )
+            ],
+            recommendations=[
+                LLMRecommendationSchema(
+                    action="Allow extra travel time",
+                    reason="Active congestion along A4 Westbound.",
+                    evidence_sources=["TfL Road Network"],
+                )
+            ],
+            limitations=["Student A model excluded from route traversal."],
+        )
+        mock_llm.generate_structured_report.return_value = valid_response
+
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=mock_llm,
+        )
+
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=[]),
+        )
+
+        self.assertTrue(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.AVAILABLE)
+        self.assertEqual(synthesis.headline, "Victoria to Heathrow: Congestion on A4 with Active Roadworks")
+        self.assertIn("A4 corridor exhibits heavy congestion", synthesis.summary)
+        self.assertEqual(len(synthesis.key_findings), 1)
+        self.assertEqual(len(synthesis.recommendations), 1)
+        self.assertEqual(synthesis.limitations, ["Student A model excluded from route traversal."])
+
+    def test_phase4_test_b_garbage_appended_simulated_corruption_rejected(self) -> None:
+        """Test B: Garbage technical word block appended to summary is rejected by integrity validation."""
+        corrupted_summary = (
+            "The planned route faces delays on A4. "
+            "schema prompt validation output mapping configuration payload sequence "
+            "framework processing dataset structure requirements parsing logic matrix"
+        )
+        corrupted_response = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="London to Heathrow Delays",
+            summary=corrupted_summary,
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
+        mock_llm = MagicMock(spec=LLMProvider)
+        mock_llm.generate_structured_report.return_value = corrupted_response
+
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=mock_llm,
+        )
+
+        assessment = SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=["Weather monitored."])
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            assessment,
+        )
+
+        self.assertFalse(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.UNAVAILABLE)
+        self.assertIsNone(synthesis.headline)
+        self.assertIsNone(synthesis.summary)
+        self.assertEqual(synthesis.key_findings, [])
+        self.assertEqual(synthesis.recommendations, [])
+        self.assertEqual(
+            synthesis.limitations,
+            [
+                "AI synthesis was unavailable because the generated response did not meet the required output format. The evidence-based journey assessment remains available."
+            ],
+        )
+
+    def test_phase4_test_c_raw_prompt_or_schema_text_rejected(self) -> None:
+        """Test C: Raw prompt instructions or OpenAPI schema fragments returned are rejected."""
+        leaked_response = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Route Report",
+            summary="Follow CRITICAL GROUNDEDNESS rules and output according to JSON schema.",
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
+        mock_llm = MagicMock(spec=LLMProvider)
+        mock_llm.generate_structured_report.return_value = leaked_response
+
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=mock_llm,
+        )
+
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=[]),
+        )
+
+        self.assertFalse(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.UNAVAILABLE)
+        self.assertEqual(
+            synthesis.limitations,
+            [
+                "AI synthesis was unavailable because the generated response did not meet the required output format. The evidence-based journey assessment remains available."
+            ],
+        )
+
+    def test_phase4_test_d_pydantic_validation_failure_sanitized_limitation(self) -> None:
+        """Test D: Pydantic validation failure produces clean user limitation without traceback dump."""
+        mock_llm = MagicMock(spec=LLMProvider)
+        mock_llm.generate_structured_report.side_effect = LLMValidationError(
+            "4 validation errors for LLMSynthesisSchema\nkey_findings.0.title\n  Field required [type=missing]"
+        )
+
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=mock_llm,
+        )
+
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=[]),
+        )
+
+        self.assertFalse(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.UNAVAILABLE)
+        # Verify no Python traceback or technical dump in limitations
+        self.assertEqual(
+            synthesis.limitations,
+            [
+                "AI synthesis was unavailable because the generated response did not meet the required output format. The evidence-based journey assessment remains available."
+            ],
+        )
+        self.assertNotIn("validation errors", synthesis.limitations[0])
+        self.assertNotIn("LLMSynthesisSchema", synthesis.limitations[0])
+
+    def test_phase4_test_e_gemini_429_rate_limit_retry(self) -> None:
+        """Test E: Gemini 429 triggers retry behavior and succeeds if subsequent attempt is 200."""
+        from app.services.llm_provider import GeminiProvider
+        import httpx
+
+        mock_client = MagicMock(spec=httpx.Client)
+        # Attempt 1: HTTP 429; Attempt 2: HTTP 200
+        resp_429 = MagicMock(status_code=429, text="Rate limit exceeded")
+        resp_200 = MagicMock(
+            status_code=200,
+            json=lambda: {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "text": '{"status": "available", "headline": "Clear Route", "summary": "No issues.", "key_findings": [], "recommendations": [], "limitations": []}'
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+        mock_client.post.side_effect = [resp_429, resp_200]
+
+        provider = GeminiProvider(
+            api_key="test-api-key",
+            model="gemini-3.6-flash",
+            http_client=mock_client,
+            max_retries=2,
+            retry_base_delay=0.01,
+        )
+
+        result = provider.generate_structured_report("test prompt", LLMSynthesisSchema)
+        self.assertEqual(result.headline, "Clear Route")
+        self.assertEqual(mock_client.post.call_count, 2)
+
+    def test_phase4_test_f_gemini_persistent_failure_clean_unavailable_state(self) -> None:
+        """Test F: Persistent Gemini failure surfaces clean user limitation with zero raw exception leakage."""
+        mock_llm = MagicMock(spec=LLMProvider)
+        mock_llm.generate_structured_report.side_effect = LLMProviderError(
+            "Gemini server error (HTTP 500): Internal error with stack trace at /usr/local/bin/server.py:120"
+        )
+
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=mock_llm,
+        )
+
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=[]),
+        )
+
+        self.assertFalse(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.UNAVAILABLE)
+        self.assertEqual(
+            synthesis.limitations,
+            [
+                "AI synthesis is temporarily unavailable. The evidence-based journey assessment remains available."
+            ],
+        )
+        self.assertNotIn("HTTP 500", synthesis.limitations[0])
+        self.assertNotIn("server.py", synthesis.limitations[0])
+
+    def test_phase4_test_g_claude_fallback_if_configured(self) -> None:
+        """Test G: Primary provider transient failure cleanly invokes configured Claude fallback."""
+        from app.services.llm_provider_router import LLMProviderRouter
+
+        mock_primary = MagicMock(spec=LLMProvider)
+        mock_primary.generate_structured_report.side_effect = LLMProviderError("Primary HTTP 503")
+
+        mock_fallback = MagicMock(spec=LLMProvider)
+        fallback_synthesis = LLMSynthesisSchema(
+            status=DataAvailabilityStatus.AVAILABLE,
+            headline="Claude Fallback Report",
+            summary="Summary generated via fallback.",
+            key_findings=[],
+            recommendations=[],
+            limitations=[],
+        )
+        mock_fallback.generate_structured_report.return_value = fallback_synthesis
+
+        router = LLMProviderRouter(primary_provider=mock_primary, fallback_provider=mock_fallback)
+        result = router.generate_structured_report("test prompt", LLMSynthesisSchema)
+
+        self.assertEqual(result.headline, "Claude Fallback Report")
+        self.assertEqual(mock_primary.generate_structured_report.call_count, 1)
+        self.assertEqual(mock_fallback.generate_structured_report.call_count, 1)
+
+    def test_phase4_test_h_claude_unavailable_clean_unavailable_state(self) -> None:
+        """Test H: When both primary and fallback fail, journey service returns clean unavailable state."""
+        from app.services.llm_provider_router import LLMProviderRouter
+
+        mock_primary = MagicMock(spec=LLMProvider)
+        mock_primary.generate_structured_report.side_effect = LLMProviderError("Primary down")
+
+        mock_fallback = MagicMock(spec=LLMProvider)
+        mock_fallback.generate_structured_report.side_effect = LLMConfigurationError("Claude key missing")
+
+        router = LLMProviderRouter(primary_provider=mock_primary, fallback_provider=mock_fallback)
+        service = JourneyService(
+            geocoding_provider=MagicMock(),
+            routing_provider=MagicMock(),
+            weather_provider=MagicMock(),
+            traffic_provider=MagicMock(),
+            incident_provider=MagicMock(),
+            llm_provider=router,
+        )
+
+        synthesis, used = service._synthesize_with_llm(
+            self.journey_details,
+            self.uk_route,
+            self.full_live,
+            HistoricalEvidenceSchema(status=DataAvailabilityStatus.AVAILABLE),
+            SafetyAssessmentSchema(status=DataAvailabilityStatus.AVAILABLE, limitations=[]),
+        )
+
+        self.assertFalse(used)
+        self.assertEqual(synthesis.status, DataAvailabilityStatus.UNAVAILABLE)
+        self.assertEqual(
+            synthesis.limitations,
+            [
+                "AI synthesis is temporarily unavailable. The evidence-based journey assessment remains available."
+            ],
+        )
+
+    def test_phase4_test_i_grounding_rules_preserved(self) -> None:
+        """Test I: Grounding rules strictly reject arbitrary scores, route-wide levels, and fabricated fields."""
+        # 1. Overall score and level are forbidden in LLMSynthesisSchema
+        with self.assertRaises(ValidationError):
+            # Cannot instantiate LLMKeyFindingSchema with arbitrary severity
+            LLMKeyFindingSchema(
+                title="Fake Score",
+                description="Invented 95% risk score",
+                severity="fabricated",  # Invalid literal
+                evidence_sources=[],
+            )
+
+        # 2. Verify LLMSynthesisSchema has no overall_score or level field
+        schema = LLMSynthesisSchema.model_json_schema()
+        self.assertNotIn("overall_score", schema.get("properties", {}))
+        self.assertNotIn("level", schema.get("properties", {}))
+        self.assertNotIn("confidence", schema.get("properties", {}))
+
+        # 3. Verify Prompt instructions forbid arbitrary scores and route-wide levels
+        self.assertIn("Never create numerical risk scores", JourneyPromptService.SYSTEM_INSTRUCTIONS)
+        self.assertIn("Never create route-wide safety level categories", JourneyPromptService.SYSTEM_INSTRUCTIONS)
+        self.assertIn("Never fabricate confidence scores", JourneyPromptService.SYSTEM_INSTRUCTIONS)
+        self.assertIn("Never fabricate accident counts", JourneyPromptService.SYSTEM_INSTRUCTIONS)
+
 
 if __name__ == "__main__":
     unittest.main()

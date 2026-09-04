@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { ArrowRight, ShieldAlert } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { WorkflowSection } from "@/components/landing/workflow-section";
@@ -38,52 +38,98 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-8">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldAlert className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="truncate text-sm font-bold tracking-tight">{APP_NAME}</span>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+        <div className="mx-auto grid h-16 w-full max-w-screen-2xl grid-cols-2 items-center px-4 sm:grid-cols-3 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+          {/* 1. Left of the website */}
+          <div className="flex items-center justify-start">
+            <Link to="/" className="flex min-w-0 items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg overflow-hidden border border-border/40 bg-card">
+                <img src="/logo.png" alt="Vantage Logo" className="h-7 w-7 object-contain" />
+              </span>
+              <span className="truncate text-sm font-bold tracking-tight">{APP_NAME}</span>
+            </Link>
+          </div>
+
+          {/* 2. Center of the website */}
+          <nav
+            className="hidden items-center justify-center gap-8 sm:flex"
+            aria-label="Main Navigation"
+          >
+            <button
+              type="button"
+              onClick={scrollToWorkflow}
+              className="cursor-pointer text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              How It Works
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                document.getElementById("modules")?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="cursor-pointer text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Modules
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                document.getElementById("capabilities")?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="cursor-pointer text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Capabilities
+            </button>
+          </nav>
+
+          {/* 3. Right of the website */}
+          <div className="flex items-center justify-end">
+            <ThemeToggle />
+          </div>
         </div>
-        <ThemeToggle />
-        <Button asChild size="sm" variant="outline">
-          <Link to="/dashboard">Open workspace</Link>
-        </Button>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 sm:px-8">
+      <main className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
-          className="py-24 lg:py-32"
+          className="py-12 sm:py-16 lg:py-20"
           aria-labelledby="hero-title"
         >
-          <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
-            AI-powered traffic intelligence
-          </p>
-          <h1
-            id="hero-title"
-            className="mt-6 max-w-4xl text-4xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl"
-          >
-            Predict. Analyze.
-            <br />
-            Improve Road Safety.
-          </h1>
-          <p className="mt-8 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Use AI to predict accident severity, discover accident hotspots, assess road risks, and
-            generate infrastructure recommendations for smarter and safer transportation systems.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center gap-3">
-            <Button asChild size="lg" className="transition-transform hover:-translate-y-0.5">
-              <Link to="/dashboard">
-                Get Started
-                <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-            <Button size="lg" variant="ghost" onClick={scrollToWorkflow}>
-              Learn More
-            </Button>
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-start lg:gap-12 xl:gap-16">
+            <div className="lg:col-span-7 xl:col-span-8">
+              <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
+                AI-powered traffic intelligence
+              </p>
+              <h1
+                id="hero-title"
+                className="mt-4 text-4xl font-extrabold leading-[1.08] tracking-tight text-foreground sm:text-6xl lg:text-6xl xl:text-7xl"
+              >
+                Predict. Analyze.
+                <br />
+                Improve Road Safety.
+              </h1>
+            </div>
+
+            <div className="lg:col-span-5 xl:col-span-4 lg:pt-8">
+              <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Use AI to predict accident severity, discover accident hotspots, assess road risks,
+                and generate infrastructure recommendations for smarter and safer transportation
+                systems.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" className="transition-transform hover:-translate-y-0.5">
+                  <Link to="/dashboard">
+                    Launch Workspace
+                    <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" onClick={scrollToWorkflow}>
+                  How It Works
+                </Button>
+              </div>
+            </div>
           </div>
         </motion.section>
 

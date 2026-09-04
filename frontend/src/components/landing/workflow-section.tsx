@@ -5,19 +5,26 @@ import { WORKFLOW_STEPS } from "@/constants/content";
 
 export function WorkflowSection() {
   return (
-    <section id="workflow" aria-labelledby="workflow-title" className="scroll-mt-20 py-20">
-      <div className="max-w-2xl">
+    <section
+      id="workflow"
+      aria-labelledby="workflow-title"
+      className="scroll-mt-20 border-t border-border py-12 sm:py-16"
+    >
+      <div className="max-w-3xl">
         <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">How it works</p>
-        <h2 id="workflow-title" className="mt-4 text-3xl text-foreground sm:text-4xl">
+        <h2
+          id="workflow-title"
+          className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl"
+        >
           From a single scenario to an infrastructure decision
         </h2>
-        <p className="mt-4 text-base text-muted-foreground">
+        <p className="mt-3 text-sm text-muted-foreground sm:text-base">
           Five connected stages take raw collision context through prediction, spatial analysis and
           risk scoring into a report your team can act on.
         </p>
       </div>
 
-      <ol className="mt-12 flex flex-col items-stretch gap-2 lg:flex-row lg:items-center">
+      <ol className="mt-8 flex flex-col items-stretch gap-2 lg:flex-row lg:items-center">
         {WORKFLOW_STEPS.map((step, index) => (
           <Fragment key={step.title}>
             <motion.li
@@ -34,8 +41,8 @@ export function WorkflowSection() {
                   Step {index + 1}
                 </span>
               </div>
-              <h3 className="text-sm text-foreground">{step.title}</h3>
-              <p className="text-sm text-muted-foreground">{step.body}</p>
+              <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
             </motion.li>
 
             {index < WORKFLOW_STEPS.length - 1 ? (

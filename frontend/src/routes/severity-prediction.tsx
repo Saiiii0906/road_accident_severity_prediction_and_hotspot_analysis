@@ -9,6 +9,7 @@ import { toPredictionRequest } from "@/components/severity/severity-schema";
 import { predictSeverity, type SeverityPredictionResult } from "@/lib/api/severity";
 import { ApiError } from "@/lib/api/client";
 import { recordAnalysisHistory } from "@/lib/api/history";
+import { addNotification } from "@/lib/notifications";
 
 export const Route = createFileRoute("/severity-prediction")({
   head: () => ({
@@ -50,9 +51,9 @@ function SeverityPredictionPage() {
         title: "Accident Severity Prediction",
         region: "all",
         regionLabel:
-          values.urbanOrRural === "urban"
+          values.areaType === "urban"
             ? "Urban Area"
-            : values.urbanOrRural === "rural"
+            : values.areaType === "rural"
               ? "Rural Area"
               : "All Areas",
         period: "on_demand",
@@ -63,14 +64,27 @@ function SeverityPredictionPage() {
         )}% confidence)`,
         signals: (prediction.contributingFactors ?? []).map((f) => f.label),
       });
+
+      addNotification({
+        type: "severity_prediction",
+        title: "Severity Prediction Complete",
+        message: `Predicted outcome: ${prediction.severity.toUpperCase()} (${Math.round((prediction.confidence ?? 0) * 100)}% confidence).`,
+        link: "/severity-prediction",
+      });
     } catch (error) {
-      setResult(null);
-      setErrorMessage(
+      const msg =
         error instanceof ApiError
           ? error.message
-          : "Please verify the entered information and try again.",
-      );
+          : "Please verify the entered information and try again.";
+      setResult(null);
+      setErrorMessage(msg);
       setStatus("error");
+      addNotification({
+        type: "system",
+        title: "Severity Prediction Failed",
+        message: msg,
+        link: "/severity-prediction",
+      });
     }
   }, []);
 

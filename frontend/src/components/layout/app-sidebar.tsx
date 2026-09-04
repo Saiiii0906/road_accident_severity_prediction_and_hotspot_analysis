@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { PanelLeftClose, PanelLeftOpen, ShieldAlert } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NAV_ITEMS, APP_NAME } from "@/constants/navigation";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +26,8 @@ export function AppSidebar({ collapsed = false, onToggle, onNavigate }: AppSideb
           className="flex min-w-0 items-center gap-2.5"
           aria-label={`${APP_NAME} home`}
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldAlert className="h-4 w-4" aria-hidden />
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg overflow-hidden border border-border/40 bg-card">
+            <img src="/logo.png" alt="Vantage Logo" className="h-7 w-7 object-contain" />
           </span>
           {!collapsed && (
             <span className="truncate text-sm font-bold tracking-tight">{APP_NAME}</span>

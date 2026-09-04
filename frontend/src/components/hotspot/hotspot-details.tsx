@@ -49,7 +49,7 @@ export function HotspotDetails({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Selected hotspot"
-          description="Empirical cluster profile from Student B DBSCAN spatial analysis."
+          description="Empirical cluster profile from DBSCAN spatial density analysis."
           action={
             <Button variant="ghost" size="icon" onClick={onClear} aria-label="Clear selection">
               <X className="h-4 w-4" aria-hidden />

@@ -67,6 +67,7 @@ class LLMProvider(ABC):
         self,
         prompt: str,
         schema_cls: Type[T] = AIInfrastructureReportResponse,
+        system_instruction: Optional[str] = None,
     ) -> T:
         """Submit grounded prompt and return a validated Pydantic model instance."""
 
@@ -200,6 +201,7 @@ class GeminiProvider(LLMProvider):
         self,
         prompt: str,
         schema_cls: Type[T] = AIInfrastructureReportResponse,
+        system_instruction: Optional[str] = None,
     ) -> T:
         """Generate structured JSON conforming to schema_cls via Gemini Developer API."""
         if not self.api_key or not self.api_key.strip():
@@ -226,10 +228,16 @@ class GeminiProvider(LLMProvider):
             ],
             "generationConfig": {
                 "temperature": self.temperature,
+                "maxOutputTokens": 2048,
                 "response_mime_type": "application/json",
                 "response_schema": gemini_schema,
             },
         }
+
+        if system_instruction and system_instruction.strip():
+            payload["system_instruction"] = {
+                "parts": [{"text": system_instruction.strip()}]
+            }
 
         client = self._client or httpx.Client(timeout=self.timeout_seconds)
         should_close = self._client is None
@@ -354,10 +362,28 @@ class GeminiProvider(LLMProvider):
                 raise LLMValidationError("Gemini returned an empty response with no candidates.")
 
             content_parts = candidates[0].get("content", {}).get("parts", [])
-            if not content_parts or "text" not in content_parts[0]:
+            text_part: Optional[str] = None
+            for part in content_parts:
+                if isinstance(part, dict) and "text" in part and not part.get("thought", False):
+                    text_part = part["text"]
+                    break
+            if text_part is None:
+                for part in content_parts:
+                    if isinstance(part, dict) and "text" in part:
+                        text_part = part["text"]
+                        break
+
+            if text_part is None:
                 raise LLMValidationError("Gemini response missing text part.")
 
-            raw_text = content_parts[0]["text"]
+            raw_text = text_part.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
             parsed_json = json.loads(raw_text)
         except (json.JSONDecodeError, KeyError, IndexError) as exc:
             logger.error("Failed to parse Gemini JSON output: %s", exc)

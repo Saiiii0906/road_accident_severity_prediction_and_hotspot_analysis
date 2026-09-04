@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard,
+  Navigation,
   Gauge,
   MapPinned,
   Route as RouteIcon,
@@ -20,10 +20,10 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: "Dashboard",
+    label: "Journey Safety",
     to: "/dashboard",
-    icon: LayoutDashboard,
-    description: "Network-wide overview of severity signals and exposure.",
+    icon: Navigation,
+    description: "Corridor safety evaluation with live telemetry and historical collisions.",
   },
   {
     label: "Severity Prediction",

@@ -33,13 +33,6 @@ export const ROAD_TYPES: Option[] = [
   { value: "motorway", label: "Motorway / expressway" },
 ];
 
-export const TRAFFIC_DENSITY: Option[] = [
-  { value: "light", label: "Light" },
-  { value: "moderate", label: "Moderate" },
-  { value: "heavy", label: "Heavy" },
-  { value: "congested", label: "Congested" },
-];
-
 export const ROAD_SURFACES: Option[] = [
   { value: "dry", label: "Dry" },
   { value: "wet", label: "Wet or damp" },
@@ -61,12 +54,6 @@ export const LIGHT_CONDITIONS: Option[] = [
   { value: "dusk", label: "Dusk or dawn" },
   { value: "dark_lit", label: "Dark — street lights on" },
   { value: "dark_unlit", label: "Dark — no street lighting" },
-];
-
-export const VISIBILITY_LEVELS: Option[] = [
-  { value: "good", label: "Good — over 200 m" },
-  { value: "moderate", label: "Moderate — 50 to 200 m" },
-  { value: "poor", label: "Poor — under 50 m" },
 ];
 
 export const AREA_TYPES: Option[] = [
@@ -102,4 +89,3 @@ export const SEVERITY_DISPLAY: Record<
     barClassName: "bg-danger",
   },
 };
-

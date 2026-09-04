@@ -31,7 +31,6 @@ export function SeverityForm({ isSubmitting, onSubmit, onReset }: SeverityFormPr
     onSubmit(values);
   };
 
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onFormSubmit)} noValidate>

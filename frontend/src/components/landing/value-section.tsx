@@ -3,11 +3,21 @@ import { VALUE_PILLARS } from "@/constants/content";
 
 export function ValueSection() {
   return (
-    <section aria-labelledby="why-title" className="border-t border-border py-20">
-      <h2 id="why-title" className="max-w-2xl text-3xl text-foreground sm:text-4xl">
-        Why this platform
-      </h2>
-      <div className="mt-12 grid gap-10 md:grid-cols-3">
+    <section
+      id="capabilities"
+      aria-labelledby="why-title"
+      className="scroll-mt-20 border-t border-border py-12 sm:py-16"
+    >
+      <div className="max-w-3xl">
+        <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">Capabilities</p>
+        <h2
+          id="why-title"
+          className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl"
+        >
+          Why this platform
+        </h2>
+      </div>
+      <div className="mt-8 grid gap-8 md:grid-cols-3">
         {VALUE_PILLARS.map((pillar, index) => (
           <motion.div
             key={pillar.title}
@@ -19,8 +29,8 @@ export function ValueSection() {
             <span className="grid h-11 w-11 place-items-center rounded-xl border border-border bg-muted/50">
               <pillar.icon className="h-5 w-5 text-primary" aria-hidden />
             </span>
-            <h3 className="text-base text-foreground">{pillar.title}</h3>
-            <p className="text-sm text-muted-foreground">{pillar.body}</p>
+            <h3 className="text-base font-semibold text-foreground">{pillar.title}</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">{pillar.body}</p>
           </motion.div>
         ))}
       </div>

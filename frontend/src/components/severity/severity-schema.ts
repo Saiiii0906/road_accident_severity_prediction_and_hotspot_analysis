@@ -20,11 +20,9 @@ export const severityFormSchema = z.object({
   speedLimit: required("Select a speed limit"),
   junctionControl: required("Select a junction or control type"),
   roadType: required("Select a road type"),
-  trafficDensity: required("Select traffic density"),
   roadSurface: required("Select the road surface condition"),
   weather: required("Select weather conditions"),
   lightConditions: required("Select light conditions"),
-  visibility: required("Select visibility"),
   areaType: required("Select urban or rural"),
   latitude: z.coerce
     .number({ invalid_type_error: "Enter a number" })
@@ -42,8 +40,6 @@ export const severityFormDefaults: Partial<SeverityFormValues> = {
   vehicles: 2,
   casualties: 1,
   areaType: "urban",
-  trafficDensity: "moderate",
-  visibility: "good",
   latitude: 0,
   longitude: 0,
 };
@@ -58,7 +54,6 @@ export function toPredictionRequest(values: SeverityFormValues): SeverityPredict
     speed_limit: Number(values.speedLimit),
     junction_control: values.junctionControl,
     road_type: values.roadType,
-    traffic_density: values.trafficDensity,
     road_surface_conditions: values.roadSurface,
     weather_conditions: values.weather,
     light_conditions: values.lightConditions,

@@ -14,6 +14,7 @@ import {
   type JourneyAnalyzeResponse,
 } from "@/lib/api/journey";
 import { recordAnalysisHistory } from "@/lib/api/history";
+import { addNotification } from "@/lib/notifications";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -65,9 +66,45 @@ function JourneySafetyDashboard() {
           `Schedule: ${data.travel_date} at ${data.travel_time}`,
         ],
       });
+
+      // Dispatch functional notifications
+      addNotification({
+        type: "journey_success",
+        title: "Journey Analysis Complete",
+        message: `Corridor evaluated for ${data.source} → ${data.destination} (${result.corridor_alignment?.matched_accidents_count ?? 0} historical incidents matched).`,
+        link: "/dashboard",
+      });
+
+      if (result.llm_synthesis?.status === "unavailable") {
+        addNotification({
+          type: "gemini_fallback",
+          title: "AI Synthesis Unavailable",
+          message:
+            "Deterministic multi-factor safety assessment active with rule-based recommendations.",
+          link: "/dashboard",
+        });
+      }
+
+      const hasCriticalFactor = result.safety_assessment?.key_factors?.some(
+        (f) => f.severity === "critical",
+      );
+      if (hasCriticalFactor) {
+        addNotification({
+          type: "severe_risk",
+          title: "Critical Corridor Hazard",
+          message: `Critical safety factors identified along corridor ${data.source} → ${data.destination}.`,
+          link: "/dashboard",
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to execute journey analysis.";
       setError(message);
+      addNotification({
+        type: "journey_failure",
+        title: "Journey Analysis Failed",
+        message: `Could not evaluate corridor ${data.source} → ${data.destination}: ${message}`,
+        link: "/dashboard",
+      });
     } finally {
       setIsLoading(false);
     }

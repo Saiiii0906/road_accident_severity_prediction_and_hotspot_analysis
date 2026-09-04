@@ -1,8 +1,9 @@
-import { Bell, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationPopover } from "@/components/notifications/notification-popover";
 
 interface AppNavbarProps {
   onOpenMobileNav: () => void;
@@ -39,15 +40,7 @@ export function AppNavbar({ onOpenMobileNav }: AppNavbarProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-muted-foreground hover:text-foreground"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-        </Button>
+        <NotificationPopover />
         <ThemeToggle />
         <button
           type="button"

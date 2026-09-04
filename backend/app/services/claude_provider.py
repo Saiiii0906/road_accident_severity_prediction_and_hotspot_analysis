@@ -63,6 +63,7 @@ class ClaudeProvider(LLMProvider):
         self,
         prompt: str,
         schema_cls: Type[T] = AIInfrastructureReportResponse,
+        system_instruction: Optional[str] = None,
     ) -> T:
         """Generate structured report adhering to schema_cls via Anthropic Messages API."""
         if not self.api_key or not self.api_key.strip():
@@ -97,6 +98,9 @@ class ClaudeProvider(LLMProvider):
                 }
             ],
         }
+
+        if system_instruction and system_instruction.strip():
+            payload["system"] = system_instruction.strip()
 
         client = self._client or httpx.Client(timeout=self.timeout_seconds)
         should_close = self._client is None

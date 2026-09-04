@@ -60,6 +60,7 @@ class LLMProviderRouter(LLMProvider):
         self,
         prompt: str,
         schema_cls: Type[T] = AIInfrastructureReportResponse,
+        system_instruction: Optional[str] = None,
     ) -> T:
         """Execute report generation with primary provider; fallback on recoverable errors."""
         primary_name = type(self.primary).__name__
@@ -67,7 +68,9 @@ class LLMProviderRouter(LLMProvider):
 
         primary_exc = None
         try:
-            return self.primary.generate_structured_report(prompt, schema_cls=schema_cls)
+            return self.primary.generate_structured_report(
+                prompt, schema_cls=schema_cls, system_instruction=system_instruction
+            )
         except LLMValidationError as val_exc:
             # Do NOT failover on validation errors: schema mismatch indicates contract/prompt issue
             logger.error("Primary provider %s generated invalid schema output. Aborting failover.", primary_name)
@@ -84,7 +87,9 @@ class LLMProviderRouter(LLMProvider):
 
         # Fallback invocation (strictly 1 attempt, no loop)
         try:
-            return self.fallback.generate_structured_report(prompt, schema_cls=schema_cls)
+            return self.fallback.generate_structured_report(
+                prompt, schema_cls=schema_cls, system_instruction=system_instruction
+            )
         except LLMConfigurationError:
             # If fallback provider is not configured, surface the actual primary failure
             logger.info(

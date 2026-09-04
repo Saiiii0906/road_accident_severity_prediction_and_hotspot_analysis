@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { AppNavbar } from "@/components/layout/app-navbar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { APP_NAME } from "@/constants/navigation";
+import { APP_VERSION } from "@/constants/content";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -37,10 +39,35 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {children}
         </motion.main>
-        <footer className="border-t border-border px-4 py-5 sm:px-6 lg:px-10">
-          <small className="text-muted-foreground">
-            Frontend foundation — data services connect in a later sprint.
-          </small>
+        <footer className="border-t border-border px-4 py-4 sm:px-6 lg:px-10">
+          <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
+            <span>
+              {APP_NAME} &copy; {new Date().getFullYear()} — AI Traffic Intelligence & Road Safety
+              Platform
+            </span>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com/Saiiii0906/road_accident_severity_prediction_and_hotspot_analysis"
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors hover:text-foreground"
+              >
+                GitHub
+              </a>
+              <a
+                href="https://github.com/Saiiii0906/road_accident_severity_prediction_and_hotspot_analysis#readme"
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors hover:text-foreground"
+              >
+                Documentation
+              </a>
+              <a href="/#workflow" className="transition-colors hover:text-foreground">
+                How it works
+              </a>
+              <span className="font-mono">{APP_VERSION}</span>
+            </div>
+          </div>
         </footer>
       </div>
     </div>

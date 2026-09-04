@@ -38,6 +38,8 @@ CRITICAL GROUNDEDNESS & TRUTHFULNESS RULES:
 11. If evidence is missing (e.g. traffic unmonitored outside London or historical models out-of-coverage), explicitly record it under limitations and state it in findings.
 12. Actionable recommendations must be directly connected to the observed evidence (e.g., wet road surface, severe traffic delays, high topological risk corridor). Do not provide irrelevant generic filler recommendations.
 13. If the input deterministic assessment is "partial" or "unavailable", your output status must be "partial" or "unavailable" accordingly.
+14. The output must contain strictly user-facing, factual road safety intelligence. Never include meta-commentary, prompt instructions, schema definitions, internal variable names, or lists of technical keywords (e.g., 'schema', 'payload', 'validation', 'framework', 'pipeline', 'matrix').
+15. The summary must be a concise 2-4 sentence narrative overview strictly grounded in the verified evidence. Do not append metadata or keyword lists.
 """
 
     @classmethod

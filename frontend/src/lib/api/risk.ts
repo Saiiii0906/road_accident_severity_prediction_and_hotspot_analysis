@@ -130,7 +130,10 @@ function toRiskLevel(category: string): RiskLevel {
 /**
  * Region bounding boxes matching UK geography.
  */
-const REGION_BOUNDS: Record<string, { min_lat: number; max_lat: number; min_lon: number; max_lon: number }> = {
+const REGION_BOUNDS: Record<
+  string,
+  { min_lat: number; max_lat: number; min_lon: number; max_lon: number }
+> = {
   all: { min_lat: 49.5, max_lat: 61.0, min_lon: -8.5, max_lon: 2.0 },
   north: { min_lat: 55.0, max_lat: 61.0, min_lon: -8.5, max_lon: 2.0 },
   central: { min_lat: 53.0, max_lat: 55.0, min_lon: -8.5, max_lon: 2.0 },
@@ -167,7 +170,9 @@ function mapBackendToAnalysis(response: BackendRoadRiskResponse): RiskAnalysis {
     counts[lvl] = (counts[lvl] || 0) + 1;
   }
 
-  const distribution: RiskDistributionSlice[] = (["critical", "high", "moderate", "low"] as RiskLevel[])
+  const distribution: RiskDistributionSlice[] = (
+    ["critical", "high", "moderate", "low"] as RiskLevel[]
+  )
     .filter((lvl) => counts[lvl] > 0)
     .map((lvl) => ({
       level: lvl,
@@ -178,7 +183,8 @@ function mapBackendToAnalysis(response: BackendRoadRiskResponse): RiskAnalysis {
   // 2. Overview Metrics
   const avgRisk = segments.reduce((sum, s) => sum + s.predicted_risk, 0) / segments.length;
   const highRiskCount = counts.critical + counts.high;
-  const overallLvl: RiskLevel = avgRisk >= 0.1 ? "critical" : avgRisk >= 0.08 ? "high" : avgRisk >= 0.06 ? "moderate" : "low";
+  const overallLvl: RiskLevel =
+    avgRisk >= 0.1 ? "critical" : avgRisk >= 0.08 ? "high" : avgRisk >= 0.06 ? "moderate" : "low";
 
   const topSegment = segments[0]; // Already sorted descending by predicted_risk
   const topRoadNumber = topSegment ? topSegment.road_number : 1;
@@ -205,23 +211,27 @@ function mapBackendToAnalysis(response: BackendRoadRiskResponse): RiskAnalysis {
     })
     .sort((a, b) => b.rAvg - a.rAvg);
 
-  const roadConditions: ConditionBreakdown[] = sortedRoads.slice(0, 6).map(({ roadNum, segs, rAvg }) => {
-    const lvl: RiskLevel = rAvg >= 0.1 ? "critical" : rAvg >= 0.08 ? "high" : rAvg >= 0.06 ? "moderate" : "low";
-    return {
-      id: `road-${roadNum}`,
-      label: `Road #${roadNum} Network Corridor`,
-      riskIndex: Math.round(rAvg * 100),
-      level: lvl,
-      accidentShare: Math.round((segs.length / segments.length) * 100),
-      note: `${segs.length} topological segments analyzed`,
-    };
-  });
+  const roadConditions: ConditionBreakdown[] = sortedRoads
+    .slice(0, 6)
+    .map(({ roadNum, segs, rAvg }) => {
+      const lvl: RiskLevel =
+        rAvg >= 0.1 ? "critical" : rAvg >= 0.08 ? "high" : rAvg >= 0.06 ? "moderate" : "low";
+      return {
+        id: `road-${roadNum}`,
+        label: `Road #${roadNum} Network Corridor`,
+        riskIndex: Math.round(rAvg * 100),
+        level: lvl,
+        accidentShare: Math.round((segs.length / segments.length) * 100),
+        note: `${segs.length} topological segments analyzed`,
+      };
+    });
 
   // 4. Weather / Environmental Risk Strata
   const weatherConditions: ConditionBreakdown[] = distribution.map((d, i) => ({
     id: `stratum-${d.level}`,
     label: `${d.level.charAt(0).toUpperCase() + d.level.slice(1)} Risk Topological Strata`,
-    riskIndex: d.level === "critical" ? 95 : d.level === "high" ? 78 : d.level === "moderate" ? 54 : 32,
+    riskIndex:
+      d.level === "critical" ? 95 : d.level === "high" ? 78 : d.level === "moderate" ? 54 : 32,
     level: d.level,
     accidentShare: d.share,
     note: `${d.recordCount.toLocaleString()} segments in ${d.level} band`,
@@ -229,8 +239,20 @@ function mapBackendToAnalysis(response: BackendRoadRiskResponse): RiskAnalysis {
 
   // 5. Time Buckets (Risk across representative segment clusters)
   const timeBuckets: TimeBucket[] = [
-    { id: "tb-1", label: "Peak Collision Corridors", riskIndex: Math.round(topSegment.predicted_risk * 100), level: toRiskLevel(topSegment.risk_category), severeShare: Math.round(avgRisk * 100) },
-    { id: "tb-2", label: "Average Network Corridors", riskIndex: Math.round(avgRisk * 100), level: overallLvl, severeShare: Math.round(avgRisk * 80) },
+    {
+      id: "tb-1",
+      label: "Peak Collision Corridors",
+      riskIndex: Math.round(topSegment.predicted_risk * 100),
+      level: toRiskLevel(topSegment.risk_category),
+      severeShare: Math.round(avgRisk * 100),
+    },
+    {
+      id: "tb-2",
+      label: "Average Network Corridors",
+      riskIndex: Math.round(avgRisk * 100),
+      level: overallLvl,
+      severeShare: Math.round(avgRisk * 80),
+    },
     { id: "tb-3", label: "Low Density Segments", riskIndex: 35, level: "low", severeShare: 12 },
   ];
 
@@ -290,7 +312,7 @@ function mapBackendToAnalysis(response: BackendRoadRiskResponse): RiskAnalysis {
  */
 export async function loadRiskAnalysis(
   filters: RiskFilters,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<RiskAnalysis> {
   const bounds = REGION_BOUNDS[filters.region] || REGION_BOUNDS.all;
 
@@ -303,7 +325,7 @@ export async function loadRiskAnalysis(
   };
 
   if (filters.severity === "critical") {
-    requestPayload.min_risk = 0.10;
+    requestPayload.min_risk = 0.1;
   } else if (filters.severity === "high") {
     requestPayload.min_risk = 0.08;
   } else if (filters.severity === "moderate") {

@@ -1,6 +1,13 @@
 import type { Option } from "@/constants/severity";
 import type { AnalysisType, HistoryStatus } from "@/lib/api/history";
-import { Gauge, MapPinned, Route as RouteIcon, BrainCircuit, Navigation, type LucideIcon } from "lucide-react";
+import {
+  Gauge,
+  MapPinned,
+  Route as RouteIcon,
+  BrainCircuit,
+  Navigation,
+  type LucideIcon,
+} from "lucide-react";
 
 export const ANALYSIS_TYPE_DISPLAY: Record<AnalysisType, { label: string; icon: LucideIcon }> = {
   severity_prediction: { label: "Severity prediction", icon: Gauge },

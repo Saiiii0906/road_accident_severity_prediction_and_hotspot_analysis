@@ -185,7 +185,7 @@ function mapClusterToHotspot(cluster: BackendHotspotCluster): Hotspot {
     dominantConditions: conditions,
     recommendedIntervention: deriveIntervention(
       cluster.dominant_road_type || "",
-      cluster.average_speed ?? 0
+      cluster.average_speed ?? 0,
     ),
   };
 }
@@ -195,7 +195,7 @@ function mapClusterToHotspot(cluster: BackendHotspotCluster): Hotspot {
  */
 export async function loadHotspots(
   filters: HotspotFilters,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<HotspotDataset> {
   const requestPayload: Record<string, unknown> = {
     min_lat: 49.5,
@@ -224,7 +224,8 @@ export async function loadHotspots(
     if (filters.region !== "all" && hotspot.region !== filters.region) return false;
     if (filters.severity !== "all" && hotspot.intensity !== filters.severity) return false;
     if (filters.density !== "all") {
-      const bucket = hotspot.accidentCount >= 500 ? "high" : hotspot.accidentCount >= 100 ? "medium" : "low";
+      const bucket =
+        hotspot.accidentCount >= 500 ? "high" : hotspot.accidentCount >= 100 ? "medium" : "low";
       if (bucket !== filters.density) return false;
     }
     if (filters.weather !== "all") {
@@ -245,10 +246,16 @@ export async function loadHotspots(
 
   const totalAccidents = filtered.reduce((acc, h) => acc + h.accidentCount, 0);
   const totalSevere = filtered.reduce((acc, h) => acc + h.severeAccidentCount, 0);
-  const highRiskCount = filtered.filter((h) => h.intensity === "high" || h.intensity === "critical").length;
+  const highRiskCount = filtered.filter(
+    (h) => h.intensity === "high" || h.intensity === "critical",
+  ).length;
 
-  const topArea = filtered.length > 0 ? [...filtered].sort((a, b) => b.accidentCount - a.accidentCount)[0].location : "—";
-  const severeShare = totalAccidents > 0 ? `${Math.round((totalSevere / totalAccidents) * 100)}% of accidents` : "—";
+  const topArea =
+    filtered.length > 0
+      ? [...filtered].sort((a, b) => b.accidentCount - a.accidentCount)[0].location
+      : "—";
+  const severeShare =
+    totalAccidents > 0 ? `${Math.round((totalSevere / totalAccidents) * 100)}% of accidents` : "—";
 
   return {
     hotspots: filtered,

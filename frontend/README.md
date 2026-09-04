@@ -1,29 +1,50 @@
-# Welcome to your Lovable project
+# Vantage — Frontend Application
 
-This project was built with [Lovable](https://lovable.dev).
+This directory contains the client-side single-page application for **Vantage**—an AI-powered road safety intelligence and traffic risk analysis platform.
 
-## Build with Lovable
+---
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+## Technology Stack
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Framework:** [TanStack Start](https://tanstack.com/start) (Full-stack React framework on Vite & Nitro)
+- **UI Library:** React 19 (`react@^19.2.0`, `react-dom@^19.2.0`)
+- **Routing:** `@tanstack/react-router` (Type-safe, file-based routing)
+- **Styling:** Tailwind CSS v4 (`tailwindcss@^4.2.1`)
+- **Components:** Radix UI primitives (`@radix-ui/react-*`), Lucide React icons
+- **State Management:** `@tanstack/react-query` (`^5.101.1`)
+- **Mapping:** Leaflet
+- **Document Generation:** `jspdf` & `jspdf-autotable`
 
-## Development
+---
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## Local Development
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Start Development Server
+
+```bash
 npm run dev
 ```
 
-## Built with
+The application will be available at `http://localhost:5173`.
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+### 3. Production Build
+
+```bash
+npm run build
+```
+
+---
+
+## Documentation
+
+For a comprehensive guide to the frontend architecture, component layout, route structure, client-side history persistence, and PDF export system, please refer to:
+
+- [**Frontend Architecture Documentation**](../docs/frontend.md)
+- [**Frontend Design System**](../docs/design-system.md)
+- [**Root Repository Documentation**](../docs/README.md)

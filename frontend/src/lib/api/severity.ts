@@ -97,14 +97,11 @@ function toSeverityLevel(value: string): SeverityLevel {
 function mapResponse(payload: SeverityPredictionResponse): SeverityPredictionResult {
   // Convert class_probabilities array to a simple object
   const probabilities = payload.class_probabilities
-    ? payload.class_probabilities.reduce<Partial<Record<SeverityLevel, number>>>(
-        (acc, item) => {
-          const level = toSeverityLevel(item.severity);
-          acc[level] = item.probability;
-          return acc;
-        },
-        {}
-      )
+    ? payload.class_probabilities.reduce<Partial<Record<SeverityLevel, number>>>((acc, item) => {
+        const level = toSeverityLevel(item.severity);
+        acc[level] = item.probability;
+        return acc;
+      }, {})
     : undefined;
 
   // Generate contributing factors based on prediction confidence and probabilities
@@ -134,7 +131,7 @@ function mapResponse(payload: SeverityPredictionResponse): SeverityPredictionRes
     confidence: payload.confidence,
     probabilities,
     interpretation: `The Student A model predicts ${payload.predicted_severity.toUpperCase()} severity with ${Math.round(
-      payload.confidence * 100
+      payload.confidence * 100,
     )}% confidence based on vehicle dynamics, road layout, and environmental factors.`,
     ...(contributingFactors.length > 0 && { contributingFactors }),
     ...(payload.model_version && { modelVersion: payload.model_version }),
@@ -187,7 +184,7 @@ export async function predictSeverityBatch(
       method: "POST",
       body: batchRequest,
       ...(signal && { signal }),
-    }
+    },
   );
 
   return response.predictions.map(mapResponse);
