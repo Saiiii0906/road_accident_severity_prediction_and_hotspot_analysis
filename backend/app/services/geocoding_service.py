@@ -6,8 +6,10 @@ to resolve location query strings into verified geographic coordinates.
 """
 
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 import logging
-from typing import Optional
+import time
+from typing import ClassVar, Optional
 
 import httpx
 
@@ -56,12 +58,14 @@ class GeocodingProvider(ABC):
 
 
 # ==============================================================================
-# OpenStreetMap Nominatim Implementation
+# OpenStreetMap Nominatim Implementation with Bounded LRU Cache
 # ==============================================================================
 
 
 class NominatimGeocodingProvider(GeocodingProvider):
-    """OpenStreetMap Nominatim geocoder implementation."""
+    """OpenStreetMap Nominatim geocoder implementation with bounded TTL cache."""
+
+    _cache: ClassVar[OrderedDict[str, tuple[GeocodedLocationSchema, float]]] = OrderedDict()
 
     def __init__(
         self,
@@ -69,6 +73,8 @@ class NominatimGeocodingProvider(GeocodingProvider):
         user_agent: Optional[str] = None,
         timeout_seconds: Optional[float] = None,
         http_client: Optional[httpx.Client] = None,
+        cache_max_size: Optional[int] = None,
+        cache_ttl_seconds: Optional[float] = None,
     ) -> None:
         self.base_url = settings.GEOCODING_BASE_URL if base_url is None else base_url
         self.user_agent = settings.GEOCODING_USER_AGENT if user_agent is None else user_agent
@@ -76,12 +82,48 @@ class NominatimGeocodingProvider(GeocodingProvider):
             settings.GEOCODING_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
         )
         self._client = http_client
+        self.cache_max_size = (
+            settings.GEOCODING_CACHE_MAX_SIZE if cache_max_size is None else cache_max_size
+        )
+        self.cache_ttl_seconds = (
+            settings.GEOCODING_CACHE_TTL_SECONDS
+            if cache_ttl_seconds is None
+            else cache_ttl_seconds
+        )
+
+    @staticmethod
+    def _normalize_key(query: str) -> str:
+        """Normalize query string for deterministic cache lookup."""
+        return " ".join(query.strip().lower().split())
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear all entries from the shared geocoding cache."""
+        cls._cache.clear()
+
+    @classmethod
+    def get_cache_size(cls) -> int:
+        """Return the current number of cached geocoding entries."""
+        return len(cls._cache)
 
     def geocode(self, query: str) -> GeocodedLocationSchema:
-        """Resolve location query string via Nominatim API."""
+        """Resolve location query string via Nominatim API or return cached entry."""
         cleaned_query = query.strip()
         if not cleaned_query:
             raise LocationNotFoundError("Empty location query cannot be geocoded.", query=query)
+
+        cache_key = self._normalize_key(cleaned_query)
+        now = time.time()
+
+        # Check in-memory bounded cache
+        if cache_key in self._cache:
+            cached_location, expiry = self._cache[cache_key]
+            if now < expiry:
+                self._cache.move_to_end(cache_key)
+                logger.debug("Geocoding cache hit for '%s'", cache_key)
+                return cached_location.model_copy()
+            else:
+                del self._cache[cache_key]
 
         headers = {
             "User-Agent": self.user_agent,
@@ -145,9 +187,16 @@ class NominatimGeocodingProvider(GeocodingProvider):
             logger.error("Malformed coordinate data in Nominatim result: %s", exc)
             raise GeocodingProviderError("Invalid coordinate structure returned by geocoder.") from exc
 
-        return GeocodedLocationSchema(
+        result = GeocodedLocationSchema(
             latitude=lat,
             longitude=lon,
             display_name=display_name,
         )
+
+        # Cache valid result in bounded LRU cache
+        while len(self._cache) >= self.cache_max_size:
+            self._cache.popitem(last=False)
+        self._cache[cache_key] = (result, now + self.cache_ttl_seconds)
+
+        return result
 

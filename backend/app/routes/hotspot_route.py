@@ -9,13 +9,7 @@ router = APIRouter(prefix="/hotspots", tags=["Hotspot Analysis"])
 
 
 def get_hotspot_service() -> HotspotService:
-    """Dependency provider for HotspotService.
-
-    This is the single place that decides which HotspotService
-    implementation handles requests. Swapping the mock for a real
-    clustering/ML-backed service later means changing this one function
-    only.
-    """
+    """Dependency provider for HotspotService."""
     return HotspotService()
 
 

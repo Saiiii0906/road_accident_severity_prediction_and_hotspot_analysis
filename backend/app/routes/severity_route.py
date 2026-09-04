@@ -14,13 +14,7 @@ router = APIRouter(prefix="/severity", tags=["Severity Prediction"])
 
 
 def get_severity_service() -> SeverityService:
-    """Dependency provider for SeverityService.
-
-    This is the single place that decides which SeverityService
-    implementation handles requests. Swapping the mock for a real
-    ML-backed service later means changing this one function — no route
-    signatures or bodies need to change.
-    """
+    """Dependency provider for SeverityService."""
     return SeverityService()
 
 

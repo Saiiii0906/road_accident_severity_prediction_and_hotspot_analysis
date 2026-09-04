@@ -7,7 +7,7 @@ Evaluates geographic coverage constraints and truthfully represents absent evide
 """
 
 import logging
-from typing import Optional
+from typing import ClassVar, Optional
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,12 @@ EARTH_RADIUS_METERS = 6371000.0
 class CorridorMatchingService:
     """Performs spatial corridor matching against historical Student A, B, and C artifacts."""
 
+    _shared_hotspot_tree: ClassVar[Optional[BallTree]] = None
+    _shared_hotspot_coords_rad: ClassVar[Optional[np.ndarray]] = None
+    _shared_segment_tree: ClassVar[Optional[BallTree]] = None
+    _shared_segment_coords_rad: ClassVar[Optional[np.ndarray]] = None
+    _is_prewarmed: ClassVar[bool] = False
+
     def __init__(
         self,
         hotspot_data_manager: Optional[HotspotDataManager] = None,
@@ -51,11 +57,72 @@ class CorridorMatchingService:
             else corridor_radius_m
         )
 
-        # Lazy spatial trees
-        self._hotspot_tree: Optional[BallTree] = None
-        self._hotspot_coords_rad: Optional[np.ndarray] = None
-        self._segment_tree: Optional[BallTree] = None
-        self._segment_coords_rad: Optional[np.ndarray] = None
+        # Connect to pre-warmed trees if using default singleton managers
+        is_default_hm = hotspot_data_manager is None or hotspot_data_manager is HotspotDataManager()
+        is_default_rm = risk_data_manager is None or risk_data_manager is RiskDataManager()
+
+        if is_default_hm and self.__class__._shared_hotspot_tree is not None:
+            self._hotspot_tree: Optional[BallTree] = self.__class__._shared_hotspot_tree
+            self._hotspot_coords_rad: Optional[np.ndarray] = self.__class__._shared_hotspot_coords_rad
+        else:
+            self._hotspot_tree = None
+            self._hotspot_coords_rad = None
+
+        if is_default_rm and self.__class__._shared_segment_tree is not None:
+            self._segment_tree: Optional[BallTree] = self.__class__._shared_segment_tree
+            self._segment_coords_rad: Optional[np.ndarray] = self.__class__._shared_segment_coords_rad
+        else:
+            self._segment_tree = None
+            self._segment_coords_rad = None
+
+    @classmethod
+    def prewarm(
+        cls,
+        hotspot_data_manager: Optional[HotspotDataManager] = None,
+        risk_data_manager: Optional[RiskDataManager] = None,
+    ) -> None:
+        """Pre-construct spatial BallTrees during startup/lifespan."""
+        hm = hotspot_data_manager or HotspotDataManager()
+        rm = risk_data_manager or RiskDataManager()
+
+        if not hm.is_loaded:
+            hm.load()
+        if not rm.is_loaded:
+            rm.load()
+
+        if cls._shared_hotspot_tree is None:
+            lats_rad = hm._lats_rad
+            lons_rad = hm._lons_rad
+            cls._shared_hotspot_coords_rad = np.column_stack([lats_rad, lons_rad])
+            cls._shared_hotspot_tree = BallTree(cls._shared_hotspot_coords_rad, metric="haversine")
+            logger.info("Pre-warmed BallTree for %d DBSCAN hotspots.", len(lats_rad))
+
+        if cls._shared_segment_tree is None:
+            mid_lats_rad = rm._mid_lats_rad
+            mid_lons_rad = rm._mid_lons_rad
+            cls._shared_segment_coords_rad = np.column_stack([mid_lats_rad, mid_lons_rad])
+            cls._shared_segment_tree = BallTree(cls._shared_segment_coords_rad, metric="haversine")
+            logger.info("Pre-warmed BallTree for %d GNN road segments.", len(mid_lats_rad))
+
+        cls._is_prewarmed = True
+
+    @classmethod
+    def is_prewarmed(cls) -> bool:
+        """Check whether shared BallTrees have been pre-warmed."""
+        return (
+            cls._is_prewarmed
+            and cls._shared_hotspot_tree is not None
+            and cls._shared_segment_tree is not None
+        )
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear class-level cached BallTrees (primarily for testing)."""
+        cls._shared_hotspot_tree = None
+        cls._shared_hotspot_coords_rad = None
+        cls._shared_segment_tree = None
+        cls._shared_segment_coords_rad = None
+        cls._is_prewarmed = False
 
     def _ensure_data_loaded(self) -> None:
         """Ensure singleton managers are loaded."""
@@ -78,12 +145,20 @@ class CorridorMatchingService:
             return None
 
         if self._hotspot_tree is None:
-            # Coordinates in radians [lat_rad, lon_rad]
-            lats_rad = self.hotspot_manager._lats_rad
-            lons_rad = self.hotspot_manager._lons_rad
-            self._hotspot_coords_rad = np.column_stack([lats_rad, lons_rad])
-            self._hotspot_tree = BallTree(self._hotspot_coords_rad, metric="haversine")
-            logger.info("Initialized BallTree for %d DBSCAN hotspots.", len(lats_rad))
+            is_default_hm = self.hotspot_manager is HotspotDataManager()
+            if is_default_hm and self.__class__._shared_hotspot_tree is not None:
+                self._hotspot_tree = self.__class__._shared_hotspot_tree
+                self._hotspot_coords_rad = self.__class__._shared_hotspot_coords_rad
+            else:
+                # Coordinates in radians [lat_rad, lon_rad]
+                lats_rad = self.hotspot_manager._lats_rad
+                lons_rad = self.hotspot_manager._lons_rad
+                self._hotspot_coords_rad = np.column_stack([lats_rad, lons_rad])
+                self._hotspot_tree = BallTree(self._hotspot_coords_rad, metric="haversine")
+                logger.info("Initialized BallTree for %d DBSCAN hotspots.", len(lats_rad))
+                if is_default_hm:
+                    self.__class__._shared_hotspot_tree = self._hotspot_tree
+                    self.__class__._shared_hotspot_coords_rad = self._hotspot_coords_rad
 
         return self._hotspot_tree
 
@@ -94,11 +169,19 @@ class CorridorMatchingService:
             return None
 
         if self._segment_tree is None:
-            mid_lats_rad = self.risk_manager._mid_lats_rad
-            mid_lons_rad = self.risk_manager._mid_lons_rad
-            self._segment_coords_rad = np.column_stack([mid_lats_rad, mid_lons_rad])
-            self._segment_tree = BallTree(self._segment_coords_rad, metric="haversine")
-            logger.info("Initialized BallTree for %d GNN road segments.", len(mid_lats_rad))
+            is_default_rm = self.risk_manager is RiskDataManager()
+            if is_default_rm and self.__class__._shared_segment_tree is not None:
+                self._segment_tree = self.__class__._shared_segment_tree
+                self._segment_coords_rad = self.__class__._shared_segment_coords_rad
+            else:
+                mid_lats_rad = self.risk_manager._mid_lats_rad
+                mid_lons_rad = self.risk_manager._mid_lons_rad
+                self._segment_coords_rad = np.column_stack([mid_lats_rad, mid_lons_rad])
+                self._segment_tree = BallTree(self._segment_coords_rad, metric="haversine")
+                logger.info("Initialized BallTree for %d GNN road segments.", len(mid_lats_rad))
+                if is_default_rm:
+                    self.__class__._shared_segment_tree = self._segment_tree
+                    self.__class__._shared_segment_coords_rad = self._segment_coords_rad
 
         return self._segment_tree
 

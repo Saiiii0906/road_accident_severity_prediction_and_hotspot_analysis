@@ -46,7 +46,7 @@ export function HistoryDetails({
       <CardHeader className="border-b border-border">
         <SectionHeader
           title="Analysis details"
-          description="Illustrative record detail for review."
+          description="Selected analysis run summary and configuration."
           action={
             <Button variant="ghost" size="icon" onClick={onClear} aria-label="Clear selection">
               <X className="h-4 w-4" aria-hidden />

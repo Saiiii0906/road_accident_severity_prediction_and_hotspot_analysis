@@ -1,7 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from typing import Any
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,8 +39,29 @@ class Settings(BaseSettings):
             "http://localhost:3000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
         ]
     )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                import json
+
+                try:
+                    parsed = json.loads(v_stripped)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except Exception:
+                    pass
+            return [origin.strip() for origin in v_stripped.split(",") if origin.strip()]
+        elif isinstance(v, (list, tuple)):
+            return [str(origin).strip() for origin in v if str(origin).strip()]
+        return v
 
     LOG_LEVEL: str = "INFO"
 
@@ -68,6 +90,8 @@ class Settings(BaseSettings):
         "Mozilla/5.0 (compatible; RoadSafetyAnalytics/1.0; +https://example.com/safety-analytics)"
     )
     GEOCODING_TIMEOUT_SECONDS: float = 10.0
+    GEOCODING_CACHE_MAX_SIZE: int = 512
+    GEOCODING_CACHE_TTL_SECONDS: float = 3600.0
 
     # Routing Provider Settings
     ROUTING_PROVIDER: str = "osrm"
@@ -102,11 +126,6 @@ class Settings(BaseSettings):
     def PROJECT_ROOT(self) -> Path:
         """Root workspace directory."""
         return self.BASE_DIR.parent.parent
-
-    @property
-    def MOCK_DATA_DIR(self) -> Path:
-        """Directory containing mock JSON fixtures (backend/app/mock_data/)."""
-        return self.BASE_DIR / "mock_data"
 
     @property
     def STUDENT_A_MODELS_DIR(self) -> Path:

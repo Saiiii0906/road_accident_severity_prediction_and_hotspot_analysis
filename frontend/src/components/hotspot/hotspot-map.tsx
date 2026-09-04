@@ -15,7 +15,7 @@ import type { Hotspot } from "@/lib/api/hotspots";
  * Map workspace shell.
  *
  * INTEGRATION BOUNDARY: the surface below is a neutral schematic canvas, not a
- * geographic projection — marker positions come from normalised demo
+ * geographic projection — marker positions come from normalised cluster
  * coordinates. When Leaflet is introduced, replace only the inner surface
  * (`<div data-map-surface>`) with the map instance and keep this chrome:
  * header, zoom controls, legend and selection callbacks.

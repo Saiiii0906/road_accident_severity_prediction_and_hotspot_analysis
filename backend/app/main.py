@@ -3,8 +3,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+import uuid
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Router objects are named `router` in each route module; aliased here to
 # the domain-specific names used throughout this file for readability.
@@ -23,34 +26,31 @@ logger = logging.getLogger(__name__)
 API_VERSION = "1.0.0"
 
 API_DESCRIPTION = """
-API for predicting road accident severity, identifying accident hotspots,
-assessing location-based risk, and generating accident reports, built on
-the UK Road Safety Dataset.
-
-**Current status:** the prediction and analysis endpoints are backed by a
-mock service layer with a stable response contract. Real trained models
-will be integrated behind the same endpoints without any change to this
-API surface.
+Production API for road accident severity prediction, accident hotspot analysis,
+topological road risk assessment, and journey safety intelligence, built on
+the UK Road Safety Dataset and real-time environmental data feeds.
 
 **Capabilities:**
-- Predict the severity of a single accident or a batch of accidents
-- Identify accident hotspot clusters within an area
-- Assess accident risk for a given location and condition set
-- Generate aggregate accident reports and export them as files
+- **Student A (Severity Prediction):** 138-feature Random Forest classifier predicting collision severity (Fatal, Serious, Slight).
+- **Student B (Hotspot Analysis):** In-memory DBSCAN clustering over 3,700+ empirical accident clusters across Great Britain.
+- **Student C (Road Risk Analysis):** Graph Neural Network (GNN) continuous structural risk evaluation over 13,900+ road segments.
+- **Journey Safety Analysis:** Multi-source corridor safety evaluation combining real geocoding (Nominatim), routing (OSRM), live environmental telemetry (Open-Meteo weather, TfL traffic delays, and active incident disruptions), historical corridor matching, deterministic safety assessment, and grounded Gemini AI synthesis.
+- **AI Infrastructure Report:** Evidence-grounded multi-model decision-support report synthesis for transport planning.
 """
 
 from app.config import settings
 from app.services.severity_service import SeverityModelManager
 from app.services.hotspot_service import HotspotDataManager
 from app.services.risk_service import RiskDataManager
+from app.services.corridor_matching_service import CorridorMatchingService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown.
 
     Loads the Student A Machine Learning model artifacts, Student B
-    DBSCAN hotspot summary artifacts, and Student C GNN road risk predictions
-    once at startup and keeps them resident in memory.
+    DBSCAN hotspot summary artifacts, Student C GNN road risk predictions,
+    and pre-warms corridor spatial indexing structures.
     """
     logger.info("Application Starting: loading model artifacts and data...")
     try:
@@ -71,6 +71,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Student C Risk Data Manager loaded and ready.")
     except Exception as exc:
         logger.error("Critical: Could not load Student C risk data at startup: %s", exc)
+        raise exc
+
+    try:
+        CorridorMatchingService.prewarm()
+        logger.info("Corridor Matching spatial indexes pre-warmed and ready.")
+    except Exception as exc:
+        logger.error("Critical: Could not pre-warm corridor matching indexes: %s", exc)
         raise exc
 
     logger.info("Application Started")
@@ -96,21 +103,41 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-DEVELOPMENT_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=DEVELOPMENT_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch unhandled exceptions and return safe 500 response without leaking internals."""
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
+        )
+
+    error_id = f"err-{uuid.uuid4().hex[:12]}"
+    logger.error(
+        "Unhandled exception [error_id=%s] on %s %s: %s",
+        error_id,
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "An internal server error occurred.",
+            "error_id": error_id,
+        },
+    )
 
 # Mount routes at root and /api for full compatibility with frontend / direct consumers
 app.include_router(severity_router)
