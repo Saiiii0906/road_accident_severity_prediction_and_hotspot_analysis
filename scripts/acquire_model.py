@@ -71,10 +71,16 @@ def verify_existing_model(
     target_path: Path,
     expected_sha256: str | None = None,
     min_size_bytes: int = 1024,
-) -> bool:
-    """Verify whether an existing file meets integrity requirements."""
+) -> tuple[bool, bool]:
+    """Verify whether an existing file meets integrity requirements.
+
+    Returns:
+        tuple[bool, bool]: (is_valid, has_mismatch)
+        - is_valid: True if file exists and meets all integrity criteria.
+        - has_mismatch: True specifically if file exists but failed expected SHA-256.
+    """
     if not target_path.is_file():
-        return False
+        return False, False
 
     size = target_path.stat().st_size
     if size < min_size_bytes:
@@ -83,18 +89,21 @@ def verify_existing_model(
             target_path,
             size,
         )
-        return False
+        return False, False
 
     if expected_sha256:
         logger.info("Verifying SHA-256 checksum of existing model at %s...", target_path)
         actual_hash = compute_file_sha256(target_path)
         if actual_hash.lower() != expected_sha256.lower():
-            logger.warning(
-                "Existing model checksum mismatch: expected %s, got %s",
+            logger.error(
+                "CRITICAL: Existing model file at '%s' failed SHA-256 verification!\n"
+                "  Expected: %s\n"
+                "  Actual:   %s",
+                target_path,
                 expected_sha256,
                 actual_hash,
             )
-            return False
+            return False, True
         logger.info("Existing model passed SHA-256 verification: %s...", actual_hash[:16])
 
     logger.info(
@@ -102,7 +111,7 @@ def verify_existing_model(
         target_path,
         size / (1024**3),
     )
-    return True
+    return True, False
 
 
 def acquire_model(
@@ -116,9 +125,17 @@ def acquire_model(
     # Ensure target parent directory exists
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Check if target already exists and is valid
-    if verify_existing_model(target_path, expected_sha256):
+    # Check if target already exists
+    is_valid, has_mismatch = verify_existing_model(target_path, expected_sha256)
+    if is_valid:
         return 0
+    if has_mismatch:
+        logger.error(
+            "CRITICAL: Aborting acquisition because existing model file at '%s' is corrupted or mismatched. "
+            "Remove or replace the corrupt file before retrying.",
+            target_path,
+        )
+        return 1
 
     if not source_url or not source_url.strip():
         logger.error(

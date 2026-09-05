@@ -15,7 +15,6 @@ services:
       - LOG_LEVEL=INFO
       # Pass through external secrets / keys without storing them in this file
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       # Optional model acquisition config (used only if model is not mounted)
       - VANTAGE_MODEL_SOURCE_URL=${VANTAGE_MODEL_SOURCE_URL:-}
       - VANTAGE_MODEL_SHA256=${VANTAGE_MODEL_SHA256:-}

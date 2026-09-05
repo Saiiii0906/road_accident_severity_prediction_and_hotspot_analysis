@@ -1,0 +1,20 @@
+# =================================================================
+# Vantage Reverse Proxy Configuration via Caddy (Automatic HTTPS)
+# NOTE: Replace 'api.vantage.example.com' with your verified domain.
+# You can also pass API_DOMAIN in the host environment.
+# =================================================================
+{$API_DOMAIN:api.vantage.example.com} {
+    reverse_proxy localhost:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    encode zstd gzip
+
+    @health path /health
+    handle @health {
+        reverse_proxy localhost:8000
+    }
+}
