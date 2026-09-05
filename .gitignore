@@ -37,9 +37,8 @@ student_C/gnn_accident_dataset.csv
 # Student C - large Processed dataset
 student_C/processed_data.csv
 
-# Student A - large ML artifacts
+# Student A - large ML artifacts (7.8 GB model remains externally managed)
 student_A/models/accident_severity_model.pkl
-student_A/models/severity_encoder.pkl
 
 # Student A - large training notebook
 student_A/Accident_Severity_Prediction.ipynb
