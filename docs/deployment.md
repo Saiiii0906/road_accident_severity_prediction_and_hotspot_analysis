@@ -11,14 +11,14 @@ This document is the authoritative operational guide for deploying **Vantage —
 
 Vantage employs a decoupled, production-hardened client-server architecture:
 
-```
+```text
                                   [ Internet / Users ]
                                            │
                     ┌──────────────────────┴──────────────────────┐
                     ▼                                             ▼
           [ Frontend (Static/Edge) ]                    [ Backend Host (Linux VM) ]
-          Provider: Cloudflare Pages / Vercel           OS: Ubuntu 22.04 / Debian 12
-          Runtime: TanStack Start + React               Specs: >= 8GB RAM, 4 vCPU, 50GB SSD
+          Provider: Cloudflare Pages / Vercel           OS: Ubuntu 24.04 LTS (ARM64 / x86_64)
+          Runtime: TanStack Start + React               Specs: 2 OCPU / 12GB (Free) | >= 16GB (Paid)
           URL: https://vantage.example.com               │
                                                          ▼
                                                 [ Reverse Proxy: Caddy / Nginx ]
@@ -45,15 +45,28 @@ Vantage employs a decoupled, production-hardened client-server architecture:
 
 Due to Student A's 7.80 GB Random Forest collision severity model, the backend **cannot** run on low-memory serverless platforms (such as AWS Lambda, Google Cloud Run with standard tiers, or free Vercel serverless functions).
 
-### Server Sizing Specifications
+### Target Platforms & Server Sizing
 
-| Component | Minimum Requirement | Recommended Production | Rationale |
+- **Primary Free Production Target:** **Oracle Cloud Always Free (VM.Standard.A1.Flex, ARM64)** running **Ubuntu 24.04 LTS** (2 OCPU total, 12 GB RAM total, 50–100 GB Boot/Block Volume).
+  - **Resource Assessment:** **POSSIBLE BUT TIGHT.** The Student A Random Forest model consumes ~5.03 GB RSS in physical RAM upon unpickling. Within a 12 GB system RAM budget, ~6.9 GB remains available for the host operating system, Docker daemon, Uvicorn, pre-warmed spatial search trees (Student B Hotspot clusters and Student C GNN road-risk segments), and system buffer cache. This configuration is *not* guaranteed to be sufficient under high concurrency or memory spikes without active swap space, and actual ARM64 runtime verification is required.
+- **Fallback Production Target (Paid Tier):** **DigitalOcean High-Memory x86_64 VM** or **Hetzner CPX41** (Ubuntu 22.04 / 24.04 LTS, >= 16 GB RAM, >= 4 vCPUs). *Note: This fallback is a paid commercial tier, not a free tier.*
+
+| Component | Minimum Requirement | Oracle Always Free (Primary) | Paid Fallback (Recommended) | Rationale |
+| --- | --- | --- | --- | --- |
+| **Architecture** | ARM64 or x86_64 | ARM64 (`VM.Standard.A1.Flex`) | x86_64 (e.g., DigitalOcean Memory-Optimized) | Multi-arch Docker base supported; model binary is portable pickle. |
+| **System RAM** | 8 GB | 12 GB total (Always Free Max) | >= 16 GB | Unpickling 100 deep decision trees consumes ~5.03 GB RSS. |
+| **vCPU / OCPU** | 2 vCPU | 2 OCPU (4 vCPU equivalent) | >= 4 vCPU | Model deserialization (~5s) and concurrent telemetry processing. |
+| **Disk Storage** | 30 GB SSD | 50–100 GB Block Volume | 50+ GB SSD (NVMe) | OS (5GB) + Docker images (1GB) + Model artifact (7.8GB) + Swap (8GB). |
+| **Operating System** | Ubuntu 22.04 / 24.04 LTS | Ubuntu 24.04 LTS (ARM64) | Ubuntu 22.04 / 24.04 LTS (x86_64) | Modern Linux LTS kernel, systemd, native Docker Engine support. |
+
+### ARM64 Architecture Status & Verification
+
+| Aspect | Target Environment | Status | Notes |
 | --- | --- | --- | --- |
-| **System RAM** | 8 GB | 16 GB | Unpickling 100 deep decision trees consumes ~5.03 GB RSS. |
-| **vCPU** | 2 vCPU | 4 vCPU | Model deserialization (~5s) and concurrent telemetry processing. |
-| **Disk Storage** | 30 GB SSD | 50+ GB SSD (NVMe) | OS (5GB) + Docker images (1GB) + Model artifact (7.8GB) + Swap (8GB). |
-| **Operating System** | Ubuntu 22.04 / 24.04 LTS or Debian 12 | Ubuntu 22.04 LTS | Standard kernel support for Docker and POSIX file locking. |
-| **Recommended VPS** | AWS `c6i.xlarge` / `r6i.large`, GCP `e2-standard-4`, Hetzner `CPX41` (16GB RAM, €27/mo), DigitalOcean `16GB Memory-Optimized`. |
+| **Docker ARM64 Container Build** | Oracle Ampere A1 (ARM64) | `[NOT VERIFIED — requires ARM64 Docker/Oracle VM]` | Dockerfile uses multi-arch base `python:3.11-slim`, but build must be executed on ARM64 host or via `buildx`. |
+| **Model Deserialization on ARM64** | Oracle Ampere A1 (ARM64) | `[NOT VERIFIED — requires real ARM64 runtime]` | Pure scikit-learn / NumPy pickle format; requires live Python 3.11 ARM64 validation. |
+| **Model Inference on ARM64** | Oracle Ampere A1 (ARM64) | `[NOT VERIFIED — requires real ARM64 runtime]` | Requires live invocation on target ARM64 CPU. |
+| **Model Binary Artifact** | Universal | `[VERIFIED]` | Preserved strictly as serialized (7.80 GB, 8,374,480,853 bytes); zero conversion, quantization, or alteration. |
 
 ---
 
@@ -65,9 +78,11 @@ The frontend is built with TanStack Start, React 19, and Vite.
 - **Environment Configuration:**
   - `VITE_API_BASE_URL`: Must point to the backend production domain (e.g. `https://api.vantage.example.com`).
 - **Build Command:**
+
   ```bash
   npm run build
   ```
+
 - **Output Artifacts:** `.output/public` (for Nitro / Cloudflare Pages / Vercel).
 
 ---
@@ -96,8 +111,8 @@ The Student A Random Forest artifact (`student_A/models/accident_severity_model.
 | `CORS_ORIGINS` | string / JSON | Required in prod | Comma-separated allowed frontend domains (e.g. `https://vantage.example.com`). |
 | `GEMINI_API_KEY` | secret | Required | Mandatory secret for grounded Gemini synthesis. |
 | `GEMINI_MODEL` | string | `gemini-3.6-flash` | Selected Gemini generation model. |
-| `LLM_PRIMARY_PROVIDER`| string | `gemini` | Primary AI provider (strictly `gemini`). |
-| `STUDENT_A_MODEL_PATH`| path | `student_A/models/accident_severity_model.pkl` | Path to Random Forest model binary. |
+| `LLM_PRIMARY_PROVIDER` | string | `gemini` | Primary AI provider (strictly `gemini`). |
+| `STUDENT_A_MODEL_PATH` | path | `student_A/models/accident_severity_model.pkl` | Path to Random Forest model binary. |
 | `VANTAGE_MODEL_SOURCE_URL` | URL | None | Remote URL for bootstrap download if unpopulated. |
 | `VANTAGE_MODEL_SHA256` | hex | None | Optional SHA-256 for strict checksum validation. |
 
@@ -235,6 +250,7 @@ curl -f http://127.0.0.1:8000/health
 ```
 
 Expected JSON response:
+
 ```json
 {
   "status": "healthy",
@@ -254,6 +270,7 @@ bash deploy/verify_endpoints.sh https://api.vantage.example.com
 ```
 
 Tests executed:
+
 1. `GET /health` (Status 200)
 2. `POST /api/severity/predict` (Student A Random Forest inference)
 3. `POST /api/hotspots/analyze` (Student B DBSCAN clusters)
@@ -300,10 +317,11 @@ bash deploy/verify_endpoints.sh http://127.0.0.1:8000
 
 ## 17. Resource Requirements Summary
 
-- **Host RAM:** 8 GB minimum, 16 GB recommended.
+- **Primary Free Tier Target:** Oracle Cloud Always Free (`VM.Standard.A1.Flex`, ARM64, 2 OCPU, 12 GB RAM). Resource fit: **POSSIBLE BUT TIGHT** (~5.03 GB model RSS leaving ~6.9 GB for OS, Docker daemon, Uvicorn, pre-warmed spatial trees, and buffers; requires active swap and real ARM64 runtime verification).
+- **Paid Fallback Tier Target:** DigitalOcean High-Memory or Hetzner CPX41 x86_64 VM (>= 16 GB RAM, >= 4 vCPU). *Note: Paid commercial tier.*
 - **Worker Count:** Strictly 1 Uvicorn worker process.
-- **Disk:** 30 GB minimum SSD.
-- **CPU:** 2 to 4 vCPU.
+- **Disk:** 30 GB minimum SSD (50–100 GB recommended).
+- **CPU:** 2 OCPU (ARM64) or >= 4 vCPU (x86_64).
 
 ---
 
@@ -312,3 +330,247 @@ bash deploy/verify_endpoints.sh http://127.0.0.1:8000
 1. **Memory Ceiling:** Because the Random Forest model occupies ~5.03 GB in RAM, scaling to multiple workers requires proportional memory (e.g. 4 workers = ~20 GB RAM). For cost efficiency, a single worker with asynchronous FastAPI request concurrency is maintained.
 2. **Geographic Coverage Constraints:** TfL live congestion and incident feeds cover Greater London only. Outside London (e.g. Paris or Birmingham), the system transparently marks TfL coverage as unsupported or partially supported without fabricating data.
 3. **Public Rate Limits:** Upstream Nominatim geocoding operates under standard OpenStreetMap usage policies (1 req/sec). In high-volume production, a self-hosted Nominatim or commercial geocoder should be configured via `GEOCODING_BASE_URL`.
+
+---
+
+## 19. Security Architecture & Hardening Guide
+
+Security is a first-class requirement of the Vantage production deployment. The architecture minimizes attack surfaces, eliminates credential leaks, prevents resource abuse, and protects the proprietary 7.80 GB Student A model artifact.
+
+### 19.1 Server Security (Primary: Ubuntu 24.04 LTS on Oracle Cloud Always Free ARM64)
+
+The primary free deployment target is **Oracle Cloud Always Free (VM.Standard.A1.Flex, ARM64, 2 OCPU, 12 GB RAM)** running **Ubuntu 24.04 LTS**, with **DigitalOcean High-Memory x86_64 (Ubuntu 22.04 / 24.04 LTS, >= 16 GB RAM, >= 4 vCPU)** as the paid fallback.
+
+- **Host vs Container Privilege Demarcation [VERIFIED ARCHITECTURE]:**
+  - **Host Deployment User (`vantage`):** Holds **administrative operator privileges** (membership in `sudo` and `docker` groups) necessary to provision packages, manage system services, configure firewalls, and orchestrate containers. It is not an unprivileged account.
+  - **Application Container Runtime:** Strictly drops privileges and runs as **unprivileged user `vantage` (UID 10001, GID 10001)** inside the container with all Linux capabilities dropped (`cap_drop: ["ALL"]`) and no privilege escalation allowed (`no-new-privileges:true`).
+- **Explicit SSH Hardening Policy [MANUAL OPERATOR ACTION]:**
+  - Public key authentication strictly required: `PubkeyAuthentication yes`
+  - Password authentication strictly disabled: `PasswordAuthentication no`
+  - Root SSH login strictly disabled: `PermitRootLogin no`
+  - Dedicated unprivileged deployment user: `vantage` (member of `sudo` or `wheel` group for maintenance)
+- **Mandatory 4-Step Operator Lockout-Prevention Checklist:**
+  1. **Generate or verify local SSH key pair:**
+
+     ```bash
+     ssh-keygen -t ed25519 -C "operator@vantage"
+     ```
+
+  2. **Install public key onto the target VM for the `vantage` user:**
+
+     ```bash
+     ssh-copy-id -i ~/.ssh/id_ed25519.pub vantage@<SERVER_IP>
+     ```
+
+  3. **Verify unprivileged key login in a separate terminal session BEFORE editing sshd configuration:**
+
+     ```bash
+     ssh -i ~/.ssh/id_ed25519 vantage@<SERVER_IP>
+     ```
+
+     Ensure `sudo -v` works without password prompts or with known operator password.
+
+  4. **Apply hardening configuration, validate syntax, and reload:**
+
+     ```bash
+     sudo tee /etc/ssh/sshd_config.d/99-vantage-hardened.conf << 'EOF'
+     PermitRootLogin no
+     PasswordAuthentication no
+     PubkeyAuthentication yes
+     ChallengeResponseAuthentication no
+     KbdInteractiveAuthentication no
+     EOF
+     sudo sshd -t && sudo systemctl reload ssh || sudo systemctl reload sshd
+     ```
+
+     Keep your existing terminal window open and verify a brand-new SSH connection in a second window before disconnecting.
+- **Host Firewall Rules [VERIFIED]:**
+  - Allowed ingress: Port 22 (SSH), Port 80 (HTTP ACME / cert renewal), Port 443 (HTTPS).
+  - Explicitly Blocked: Port 8000 (internal FastAPI container port is NEVER exposed publicly).
+  - Configured automatically via `deploy/setup_server.sh` using `ufw` (Ubuntu) or `firewalld` (Oracle Linux / RHEL).
+- **Intrusion Prevention & System Updates [RECOMMENDED]:**
+  - `fail2ban` active for automated SSH brute-force protection.
+  - Automatic security patches via `unattended-upgrades` (Ubuntu) or `dnf-automatic` (Oracle Linux).
+
+### 19.2 Docker & Container Security
+
+- **Unprivileged Container Execution [VERIFIED]:**
+  - Container runs as non-root user `vantage` (UID 10001, GID 10001).
+  - Configured in `Dockerfile` via `USER vantage:vantage` and in `docker-compose.yml` via `user: "10001:10001"`.
+- **Privilege Escalation Prevention [VERIFIED]:**
+  - `security_opt: [ "no-new-privileges:true" ]` prevents binaries inside the container from gaining root privileges.
+  - `cap_drop: [ "ALL" ]` strips all Linux capabilities from the container.
+- **Loopback Port Binding [VERIFIED]:**
+  - Container port 8000 is bound strictly to `127.0.0.1:8000:8000`. It is never bound to `0.0.0.0`, eliminating direct internet access to the ASGI server.
+- **Model Volume Read-Only [VERIFIED]:**
+  - Volume mount enforces read-only mode: `./student_A/models/accident_severity_model.pkl:/app/student_A/models/accident_severity_model.pkl:ro`.
+- **Zero Image Secrets [VERIFIED]:**
+  - No secrets, `.env` files, or private keys are baked into the Dockerfile or container image layers.
+
+### 19.3 API Security & Request Validation
+
+- **Strict Schema Enforcement [VERIFIED]:**
+  - Every API endpoint is guarded by Pydantic models. Unrecognized or malformed inputs return controlled `422 Unprocessable Entity` responses.
+- **Payload Size Limiting [VERIFIED]:**
+  - FastAPI middleware enforces a 5 MB maximum request payload (`MAX_REQUEST_BODY_BYTES = 5 * 1024 * 1024`), returning `HTTP 413 Content Too Large` before memory allocation.
+  - Reverse proxies (Caddy `request_body max_size 5MB` / Nginx `client_max_body_size 5M`) enforce the limit at ingress.
+- **No Command or Path Execution [VERIFIED]:**
+  - Endpoints take structured parameters; no user inputs are passed to shells, filesystem paths, or dynamic evaluators.
+- **Sanitized Error Responses [VERIFIED]:**
+  - Internal exceptions are intercepted by `unhandled_exception_handler`, logging a diagnostic UUID (`error_id`) and returning a generic error payload without leaking stack traces or internal filesystem paths.
+
+### 19.4 Rate Limiting & Resource Abuse Prevention
+
+- **Ingress Rate Limiting [VERIFIED IN CONFIG | NOT VERIFIED ON LIVE VM]:**
+  - `deploy/nginx.conf` explicitly establishes and enforces two rate-limiting zones:
+    - **General API:** 15 requests/sec per client IP with burst allowance of 20 (`limit_req zone=vantage_api_limit burst=20 nodelay;`).
+    - **Heavy Endpoints:** 2 requests/sec per client IP with burst allowance of 5 (`limit_req zone=vantage_heavy_limit burst=5 nodelay;`) on `/api/journey/analyze` and `/api/reports/ai-infrastructure-report`.
+    - Excessive requests are rejected immediately with `HTTP 429 Too Many Requests`.
+  - **Verification Status:**
+    - `[VERIFIED IN CONFIG]`: Configuration syntax, rate-limit zones, and location match blocks are verified in `deploy/nginx.conf`.
+    - `[NOT VERIFIED — requires deployed host]`: Live runtime verification requires an active Nginx reverse-proxy daemon on the production host.
+- **LLM Provider Circuit Breaker [VERIFIED]:**
+  - Gemini client includes a circuit breaker (trips after 5 consecutive failures, 60s cooldown) to prevent hammering external APIs during upstream degradation.
+
+### 19.5 Authentication & Access Control Decision
+
+- **Architecture Decision [VERIFIED]:**
+  - The Vantage public demonstration API uses **public anonymous access** with defense-in-depth controls:
+    1. HTTPS TLS encryption.
+    2. Strict origin CORS validation.
+    3. Ingress rate limiting per client IP.
+    4. Strict Pydantic input schema validation.
+    5. Request body size ceilings.
+  - Rationale: Client-side single-page applications cannot securely store shared API secrets without exposing them in browser bundles. Adding API keys client-side provides security theater while complicating client delivery. Upstream provider secrets (`GEMINI_API_KEY`, `TFL_APP_KEY`) remain strictly encapsulated on the server.
+
+### 19.6 Production CORS Enforcement
+
+- **Strict Origin Whitelisting [VERIFIED]:**
+  - `backend/app/config.py` enforces that wildcard `*` is strictly forbidden when `ENVIRONMENT=production`. Setting `CORS_ORIGINS=*` raises an immediate startup configuration validation error.
+  - Only explicitly listed frontend origins (e.g. `https://vantage.example.com`) receive CORS headers.
+
+### 19.7 HTTPS & TLS Architecture
+
+- **Automated TLS [RECOMMENDED]:**
+  - Caddy handles automatic Let's Encrypt certificate generation, renewal, and HTTP-to-HTTPS 301 redirection.
+  - Nginx provides TLS 1.2/1.3 with forward secrecy cipher suites (`deploy/nginx.conf`).
+  - Direct connection to port 8000 is blocked; only the HTTPS reverse proxy serves external traffic.
+
+### 19.8 Defense-in-Depth Security Headers
+
+Security headers are enforced with clear separation of responsibilities:
+
+- **Edge / HTTPS Reverse Proxy (`deploy/nginx.conf` & `deploy/Caddyfile`) [VERIFIED IN CONFIG]:**
+  - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` (Strictly edge HTTPS only)
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: DENY`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+
+- **FastAPI Application Stack (`backend/app/main.py`) [VERIFIED]:**
+  - Injected directly by ASGI `security_middleware` across all backend responses:
+    - `X-Content-Type-Options: nosniff`
+    - `X-Frame-Options: DENY`
+    - `Referrer-Policy: strict-origin-when-cross-origin`
+    - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+  - **HSTS Isolation:** `Strict-Transport-Security` is intentionally **omitted** from backend HTTP responses. This ensures that local developer machines, automated test runners, and staging environments using plain HTTP are never poisoned by browser HSTS pinning. HSTS is strictly delegated to the edge TLS reverse proxy.
+
+### 19.9 Secret Management Policy
+
+- **Zero Secrets in Source Control [VERIFIED]:**
+  - Repository scan confirmed zero API keys (`AIzaSy`, `sk-ant`), SSH keys, or cloud credentials.
+  - Example environment templates (`.env.example`) contain only safe placeholders.
+- **Frontend Bundle Isolation [VERIFIED]:**
+  - Verified that Vite/TanStack frontend bundle contains no server secrets or Gemini credentials.
+- **Runtime Injection [RECOMMENDED]:**
+  - Production secrets (`GEMINI_API_KEY`, `TFL_APP_KEY`) are passed via environment variables or secret managers (e.g., AWS Secrets Manager, GCP Secret Manager, or Docker secrets).
+
+### 19.10 Model Artifact Protection
+
+- **Git & Container Isolation [VERIFIED]:**
+  - The 7.80 GB Student A model (`accident_severity_model.pkl`) is excluded by `.gitignore` and `.dockerignore`.
+  - The model is never bundled in image layers or exposed via HTTP endpoints.
+- **Read-Only Mounting & Verification [VERIFIED]:**
+  - Mounted read-only (`:ro`) in Docker.
+  - `scripts/acquire_model.py` enforces SHA-256 integrity verification and sanitizes logged download URLs.
+
+### 19.11 Logging Policy & Sanitization
+
+- **Credential Masking [VERIFIED]:**
+  - Production logs omit API keys, tokens, authorization headers, and raw user payload data.
+- **Structured Error Tracking [VERIFIED]:**
+  - Operational logs capture timestamps, log levels, HTTP methods, paths, status codes, and diagnostic `error_id` UUIDs.
+
+### 19.12 Dependency Security
+
+- **Python Dependencies [VERIFIED]:**
+  - Pinned production dependencies in `backend/requirements.txt`.
+  - Aligned `scikit-learn==1.9.0` with serialized model artifacts.
+- **Frontend Dependencies [VERIFIED]:**
+  - Pinned lockfile dependencies in `frontend/package-lock.json`.
+  - Frontend production build succeeds with 0 errors.
+
+### 19.13 Non-Destructive Security Verification Results
+
+| Check | Description | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | Repository secret scan | `[VERIFIED]` | 0 real API keys, tokens, or private keys found. |
+| 2 | Hardcoded credentials | `[VERIFIED]` | Only RFC 2606 placeholders in `.env.example`. |
+| 3 | Exposed `.env` files | `[VERIFIED]` | Real `.env` files untracked and excluded in `.gitignore`. |
+| 4 | Claude residue | `[VERIFIED]` | Removed from Compose; unconfigured defaults in config. |
+| 5 | Wildcard CORS rejection | `[VERIFIED]` | `Settings` validator rejects `*` in production mode. |
+| 6 | Debug mode disabled | `[VERIFIED]` | `DEBUG=false` in production configuration. |
+| 7 | Production URLs | `[VERIFIED]` | Frontend points to HTTPS production endpoints. |
+| 8 | Model artifact exclusion | `[VERIFIED]` | Excluded from Git and Docker build contexts. |
+| 9 | Non-root container | `[VERIFIED]` | `USER vantage:vantage` (UID 10001) in Dockerfile. |
+| 10 | Dropped capabilities | `[VERIFIED]` | `cap_drop: [ALL]`, `no-new-privileges:true`. |
+| 11 | Malformed request handling | `[VERIFIED]` | Returns HTTP 422 with structured schema errors. |
+| 12 | Payload size limit | `[VERIFIED]` | Payloads > 5 MB rejected with HTTP 413. |
+| 13 | Coordinate validation | `[VERIFIED]` | Strict float parsing in request schemas. |
+| 14 | Geographic scoping | `[VERIFIED]` | Paris test returns `unsupported_for_geography`. |
+| 15 | Provider failure handling | `[VERIFIED]` | Provider outages return `failed` status gracefully. |
+| 16 | Gemini failure fallback | `[VERIFIED]` | Circuit breaker triggers deterministic fallback. |
+| 17 | Stack trace suppression | `[VERIFIED]` | 500 handler returns sanitized `error_id`. |
+
+### 19.14 Threat Model, Incident Response & Runbooks
+
+#### Threat Model Summary
+
+- **Threat: Model Artifact Theft:** Mitigated by read-only filesystem mounts, non-root user permissions, absence of download endpoints, and exclusion from public Git/Docker repositories.
+- **Threat: Resource Exhaustion (DoS):** Mitigated by 5 MB request size limits, reverse proxy rate limits (15 r/s general, 2 r/s heavy), and single Uvicorn worker process concurrency.
+- **Threat: Gemini Quota Depletion:** Mitigated by circuit breaker protection, upstream rate limiting, and strict deterministic fallback assessments.
+- **Threat: Port 8000 Direct Access:** Mitigated by loopback binding (`127.0.0.1:8000`) and host firewall rules blocking all ports except 22, 80, and 443.
+
+#### Incident Response Basics
+
+1. **Suspected Credential Leak:** Rotate `GEMINI_API_KEY` immediately in Google AI Studio; update `backend/.env`; restart container via `docker compose restart backend`.
+2. **Abusive IP Flood:** Add offending IP to host firewall:
+   - Oracle Linux: `firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="<ABUSIVE_IP>" drop' && firewall-cmd --reload`
+   - Ubuntu: `ufw insert 1 deny from <ABUSIVE_IP> to any`
+3. **Container Out of Memory:** Verify swapfile is active (`free -h`); inspect RSS memory usage; verify `--workers 1` is enforced.
+
+### 19.15 Security Acceptance Criteria Checklist
+
+- [x] `[VERIFIED]` No secrets committed in Git repository.
+- [x] `[VERIFIED]` No secrets embedded in frontend client bundle.
+- [x] `[VERIFIED]` Gemini API key remains strictly server-side.
+- [x] `[VERIFIED]` Student A 7.80 GB model is not exposed publicly or downloadable.
+- [x] `[VERIFIED]` Port 8000 is bound to localhost and blocked in firewall.
+- [x] `[MANUAL OPERATOR ACTION]` SSH password authentication disabled on VM (`PasswordAuthentication no`).
+- [x] `[MANUAL OPERATOR ACTION]` Root SSH login disabled on VM (`PermitRootLogin no`).
+- [x] `[VERIFIED]` Host firewall permits only ports 22, 80, and 443.
+- [x] `[VERIFIED IN CONFIG]` Automatic HTTPS configured via reverse proxy (Caddy / Nginx).
+- [x] `[VERIFIED]` Wildcard `*` CORS rejected in production mode.
+- [x] `[VERIFIED IN CONFIG]` Ingress rate limiting configured in reverse proxy (15 r/s general, 2 r/s heavy).
+- [x] `[VERIFIED]` Pydantic request validation active across all endpoints.
+- [x] `[VERIFIED]` Unhandled exceptions return generic message and `error_id` without stack traces.
+- [x] `[VERIFIED]` Docker container runs unprivileged as UID 10001 with dropped capabilities.
+- [x] `[VERIFIED]` Student A model mounted read-only (`:ro`).
+- [x] `[VERIFIED]` Defense-in-depth security headers injected (nosniff, DENY, referrer, permissions).
+- [x] `[VERIFIED]` HSTS isolated to edge HTTPS reverse proxy; omitted from plain HTTP backend.
+- [x] `[VERIFIED]` 223/223 backend unit and integration tests pass.
+- [x] `[VERIFIED]` Frontend production build passes with 0 errors.
+- [x] `[VERIFIED]` ESLint reports 0 errors.
+- [ ] `[NOT VERIFIED]` Live cloud VM TLS handshake (requires deployed host and public DNS).
+- [ ] `[NOT VERIFIED]` Live reverse proxy rate-limit enforcement (requires active Nginx on deployed host).
+- [ ] `[NOT VERIFIED]` ARM64 container build and model inference (requires Oracle Ampere A1 ARM64 host).

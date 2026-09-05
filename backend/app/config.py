@@ -63,6 +63,19 @@ class Settings(BaseSettings):
             return [str(origin).strip() for origin in v if str(origin).strip()]
         return v
 
+    @field_validator("CORS_ORIGINS", mode="after")
+    @classmethod
+    def validate_production_cors(cls, v: list[str]) -> list[str]:
+        import os
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env == "production":
+            for origin in v:
+                if origin == "*" or origin.strip() == "*":
+                    raise ValueError(
+                        "Security violation: Wildcard '*' CORS origin is strictly forbidden in production mode."
+                    )
+        return v
+
     LOG_LEVEL: str = "INFO"
 
     # Multi-Provider Routing

@@ -112,6 +112,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+MAX_REQUEST_BODY_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """Enforce payload size limits and inject defense-in-depth security headers."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BODY_BYTES:
+                return JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content={"detail": "Request payload exceeds maximum allowed limit (5 MB)."},
+                )
+        except ValueError:
+            pass
+
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+
+    return response
+
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

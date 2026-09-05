@@ -18,6 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Create unprivileged system user & group (UID 10001)
+RUN groupadd -g 10001 vantage && \
+    useradd -u 10001 -g vantage -s /bin/sh -d /app vantage
+
 # Install Python production dependencies
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
@@ -36,7 +40,10 @@ COPY student_C/gnn_risk_predictions.json /app/student_C/gnn_risk_predictions.jso
 COPY scripts/acquire_model.py /app/scripts/acquire_model.py
 COPY entrypoint.sh /app/entrypoint.sh
 
-RUN chmod +x /app/entrypoint.sh /app/scripts/acquire_model.py
+RUN chmod +x /app/entrypoint.sh /app/scripts/acquire_model.py && \
+    chown -R vantage:vantage /app
+
+USER vantage:vantage
 
 EXPOSE 8000
 

@@ -5,9 +5,14 @@ services:
       dockerfile: Dockerfile
     image: vantage-backend:latest
     container_name: vantage-backend
-    restart: unless-stopped
+    # Bind strictly to loopback interface so FastAPI is never exposed to public internet
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       - PORT=8000
       - HOST=0.0.0.0
