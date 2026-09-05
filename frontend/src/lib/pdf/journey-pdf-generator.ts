@@ -25,6 +25,7 @@ const SEVERITY_COLORS: Record<string, [number, number, number]> = {
   moderate: [217, 119, 6], // #d97706 amber
   low: [37, 99, 235], // #2563eb blue
   advisory: [79, 70, 229], // #4f46e5 indigo
+  informational: [71, 85, 105], // #475569 slate-600
   unknown: [100, 116, 139], // #64748b slate
 };
 
@@ -37,15 +38,58 @@ const STATUS_COLORS: Record<DataAvailabilityStatus, [number, number, number]> = 
 
 /**
  * Sanitizes internal model nomenclature into public-facing terminology.
+ * Compound phrases are replaced first to prevent duplicated tokens.
  */
 export function sanitizePublicModelNames(text: string): string {
-  if (!text) return text;
+  if (!text) return "";
   return text
+    .replace(/\bStudent\s*A\s*(?:\([^)]*\)|RandomForest(?:\s+Model)?)?\b/gi, "Severity Prediction")
+    .replace(/\bStudent\s*B\s*(?:\([^)]*\)|DBSCAN(?:\s+Model)?)?\b/gi, "Hotspot Explorer (DBSCAN)")
+    .replace(/\bStudent\s*C\s*(?:\([^)]*\)|RoadRiskGNN)?\b/gi, "Road Risk Analysis (GNN)")
+    .replace(/\bRoadRiskGNN\b/g, "Road Risk Analysis (GNN)")
+    .replace(/\bDBSCAN\s+Model\b/gi, "Hotspot Explorer (DBSCAN)")
     .replace(/\bStudent\s*A\b/gi, "Severity Prediction")
     .replace(/\bStudent\s*B\b/gi, "Hotspot Explorer")
     .replace(/\bStudent\s*C\b/gi, "Road Risk Analysis")
-    .replace(/\bRoadRiskGNN\b/g, "Road Risk Analysis (GNN)")
-    .replace(/\bDBSCAN\s+Model\b/gi, "Hotspot Explorer (DBSCAN)");
+    .replace(/Road Risk Analysis\s+Road Risk Analysis(\s*\(GNN\))?/gi, "Road Risk Analysis (GNN)")
+    .replace(/Hotspot Explorer\s+Hotspot Explorer(\s*\(DBSCAN\))?/gi, "Hotspot Explorer (DBSCAN)");
+}
+
+/**
+ * Formats internal raw metric keys into clean human-readable table labels.
+ */
+export function cleanMetricLabel(metric: string): string {
+  if (!metric) return "";
+  const m = metric.trim();
+  const knownLabels: Record<string, string> = {
+    corridor_extent: "Corridor Extent",
+    traffic_congestion: "Traffic Congestion",
+    traffic_congestion_london_portion: "Traffic Flow (London)",
+    corridor_delay: "Corridor Delay",
+    active_disruptions: "Active Disruptions",
+    active_disruptions_london_portion: "Disruptions (London)",
+    precipitation_probability: "Rain Probability",
+    atmospheric_condition: "Weather Condition",
+    matched_hotspots_count: "Hotspot Clusters",
+    corridor_dense_hotspots: "Hotspot Clusters",
+    peak_segment_risk: "Peak Structural Risk",
+    peak_structural_risk: "Peak Structural Risk",
+  };
+  if (knownLabels[m]) return knownLabels[m];
+  return m.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Truncates text with ellipsis if it exceeds maxWidth in current font.
+ */
+function fitTextEllipsis(doc: jsPDF, text: string, maxWidth: number): string {
+  const clean = cleanPdfText(text);
+  if (doc.getTextWidth(clean) <= maxWidth) return clean;
+  let s = clean;
+  while (s.length > 3 && doc.getTextWidth(s + "...") > maxWidth) {
+    s = s.slice(0, -1);
+  }
+  return s + "...";
 }
 
 /**
@@ -60,8 +104,12 @@ export function cleanPdfText(text: string): string {
     .replace(/—/g, "--")
     .replace(/–/g, "-")
     .replace(/…/g, "...")
+    .replace(/°C/g, " C")
+    .replace(/°/g, " deg ")
+    .replace(/±/g, "+/-")
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2022\u25E6\u2023\u2043]/g, "*")
     .replace(/\u00A0/g, " ");
 }
 
@@ -110,7 +158,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
     // Running header on pages > 1
     if (currentPage > 1) {
-      doc.text("Journey Safety Analysis -- Multi-Source Corridor Assessment", margin, 8.5);
+      doc.text("Vantage -- AI-Powered Road Safety Intelligence | Corridor Assessment", margin, 8.5);
       const corridorLabel = cleanPdfText(`${journey.source} -> ${journey.destination}`);
       doc.text(
         corridorLabel.length > 46 ? `${corridorLabel.slice(0, 44)}...` : corridorLabel,
@@ -128,7 +176,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.setLineWidth(0.2);
     doc.line(margin, pageHeight - 9.5, pageWidth - margin, pageHeight - 9.5);
     doc.text(
-      "Road Safety Intelligence Platform -- Multi-Source Deterministic Assessment",
+      "Vantage -- Road Safety Intelligence Platform | Multi-Source Deterministic Assessment",
       margin,
       pageHeight - 5.5,
     );
@@ -138,7 +186,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   };
 
   const renderSectionHeader = (title: string, tag?: string): void => {
-    checkPageBreak(11);
+    checkPageBreak(28);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(15, 23, 42); // slate-900
@@ -166,12 +214,16 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
-  doc.text("Journey Safety Analysis", margin + 5, y + 7.5);
+  doc.text("VANTAGE -- Journey Safety Analysis", margin + 5, y + 7.5);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(203, 213, 225);
-  doc.text("Multi-Source Corridor Safety & Environmental Risk Assessment", margin + 5, y + 12.5);
+  doc.text(
+    "AI-Powered Multi-Source Corridor Safety & Environmental Risk Assessment",
+    margin + 5,
+    y + 12.5,
+  );
 
   const formattedDate = new Date(provenance.analysis_timestamp).toLocaleString("en-GB", {
     dateStyle: "medium",
@@ -207,6 +259,9 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(margin, y, contentWidth, 13, 1, 1, "FD");
 
+  const midCol = margin + contentWidth / 2 + 4;
+  const locMaxW = midCol - margin - 22; // width for origin/destination values
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.2);
   doc.setTextColor(100, 116, 139);
@@ -215,10 +270,9 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text(cleanPdfText(journey.source), margin + 20, y + 4.5);
-  doc.text(cleanPdfText(journey.destination), margin + 20, y + 9.5);
+  doc.text(fitTextEllipsis(doc, journey.source, locMaxW), margin + 20, y + 4.5);
+  doc.text(fitTextEllipsis(doc, journey.destination, locMaxW), margin + 20, y + 9.5);
 
-  const midCol = margin + contentWidth / 2 + 4;
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
   doc.text("Travel Date:", midCol, y + 4.5);
@@ -271,19 +325,27 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.text(m.label, boxX + 2.5, y + 3.8);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    let valFontSize = 7.5;
+    doc.setFontSize(valFontSize);
+    let valStr = m.value;
+    while (doc.getTextWidth(valStr) > colWidth - 5 && valFontSize > 6.0) {
+      valFontSize -= 0.5;
+      doc.setFontSize(valFontSize);
+    }
+    if (doc.getTextWidth(valStr) > colWidth - 5) {
+      while (valStr.length > 3 && doc.getTextWidth(valStr + "...") > colWidth - 5) {
+        valStr = valStr.slice(0, -1);
+      }
+      valStr += "...";
+    }
     doc.setTextColor(15, 23, 42);
-    doc.text(m.value, boxX + 2.5, y + 8.2);
+    doc.text(valStr, boxX + 2.5, y + 8.2);
   });
 
   y += 14;
 
   // Geocoded coordinates detail
   if (route.source || route.destination) {
-    checkPageBreak(10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
-    doc.setTextColor(71, 85, 105);
     const srcDisplay = route.source
       ? `Origin resolved: ${cleanPdfText(route.source.display_name)} (${route.source.latitude.toFixed(4)}, ${route.source.longitude.toFixed(4)})`
       : "Origin resolved: Coordinates unavailable";
@@ -292,10 +354,16 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
       : "Destination resolved: Coordinates unavailable";
 
     const wrappedSrc = doc.splitTextToSize(srcDisplay, contentWidth);
+    const wrappedDst = doc.splitTextToSize(dstDisplay, contentWidth);
+    const neededCoordHeight = (wrappedSrc.length + wrappedDst.length) * 3 + 2;
+    checkPageBreak(neededCoordHeight);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(71, 85, 105);
     doc.text(wrappedSrc, margin, y);
     y += wrappedSrc.length * 3;
 
-    const wrappedDst = doc.splitTextToSize(dstDisplay, contentWidth);
     doc.text(wrappedDst, margin, y);
     y += wrappedDst.length * 3 + 2;
   }
@@ -366,7 +434,39 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.8);
   doc.setTextColor(71, 85, 105);
-  if (tr && tr.status !== "unavailable") {
+
+  const trCoverage = tr?.coverage_status || provenance.traffic_coverage_status;
+
+  if (trCoverage === "provider_unsupported_for_geography" || tr?.status === "unavailable") {
+    doc.setTextColor(156, 163, 175);
+    doc.text("TfL traffic feed unsupported for this geography.", trafficX + 3, y + 10);
+    doc.text("TfL monitoring covers Greater London only.", trafficX + 3, y + 14);
+    doc.text("No route-wide traffic clearance implied.", trafficX + 3, y + 18);
+  } else if (trCoverage === "provider_failed") {
+    doc.setTextColor(156, 163, 175);
+    doc.text("Live traffic feed temporarily unavailable.", trafficX + 3, y + 10);
+    doc.text("Upstream provider connection error.", trafficX + 3, y + 14);
+  } else if (
+    trCoverage === "provider_partially_supported" ||
+    safety_assessment?.data_coverage?.traffic === "partial"
+  ) {
+    doc.text(
+      `Congestion: ${cleanPdfText(tr?.congestion_level || "Moderate")} (London portion)`,
+      trafficX + 3,
+      y + 8.5,
+    );
+    doc.text(
+      `Expected Delay: ${tr?.delay_minutes != null ? `${tr.delay_minutes} min` : "0 min"}`,
+      trafficX + 3,
+      y + 12.2,
+    );
+    doc.text("Coverage: Greater London portion only", trafficX + 3, y + 15.9);
+    const partialDesc = [
+      "TfL feed covers London portion only; outer",
+      "motorway corridor is unmonitored.",
+    ];
+    doc.text(partialDesc, trafficX + 3, y + 19.6);
+  } else if (tr && tr.status !== "unavailable") {
     doc.text(`Congestion: ${cleanPdfText(tr.congestion_level || "Normal")}`, trafficX + 3, y + 8.5);
     doc.text(
       `Expected Delay: ${tr.delay_minutes != null ? `${tr.delay_minutes} min` : "0 min"}`,
@@ -390,6 +490,15 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
   // Row 2: Active Road Disruptions (full-width, dynamic height to eliminate text overlap)
   const incList = live_context.incidents || [];
+  const incCov = live_context.incidents_coverage || provenance.incident_coverage_status;
+  const isIncPartial =
+    incCov === "provider_partially_supported" ||
+    safety_assessment?.data_coverage?.incidents === "partial";
+  const isIncUnsupported =
+    incCov === "provider_unsupported_for_geography" ||
+    safety_assessment?.data_coverage?.incidents === "unavailable";
+  const isIncFailed = incCov === "provider_failed";
+
   checkPageBreak(18);
 
   doc.setFillColor(248, 250, 252);
@@ -405,13 +514,13 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139);
-    const incUnavailable = safety_assessment?.data_coverage?.incidents === "unavailable";
-    const incPartial = safety_assessment?.data_coverage?.incidents === "partial";
-    const incText = incUnavailable
-      ? "TfL disruption data unavailable for this geography."
-      : incPartial
+    const incText = isIncUnsupported
+      ? "TfL disruption data unsupported for this geography (covers Greater London only)."
+      : isIncPartial
         ? "TfL disruption data covers Greater London portion only; outer corridor is unmonitored."
-        : "No active road incidents or major closures reported on route.";
+        : isIncFailed
+          ? "TfL disruption feed temporarily unavailable (provider failed)."
+          : "No active road incidents or major closures reported on corridor.";
     doc.text(incText, margin + 3, y + 8.5);
     y += 15;
   } else {
@@ -438,7 +547,12 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Active Disruptions & Incidents (${incList.length} reported)`, margin + 3, y + 4.8);
+    const titleQualifier = isIncPartial ? " - London portion only; outer corridor unmonitored" : "";
+    doc.text(
+      `Active Disruptions & Incidents (${incList.length} reported${titleQualifier})`,
+      margin + 3,
+      y + 4.8,
+    );
 
     let incY = y + 8.5;
     items.forEach((item) => {
@@ -495,7 +609,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
       doc.setFont("helvetica", "italic");
       doc.setTextColor(100, 116, 139);
       const zeroDisclaimer = doc.splitTextToSize(
-        "No mapped dense hotspot clusters intersect the corridor. This does not imply zero historical accidents.",
+        "No dense clusters intersect 1,000m corridor. Does not imply zero historical accidents.",
         histColW - 6,
       );
       doc.text(zeroDisclaimer, sbX + 3, y + 16.5);
@@ -512,7 +626,8 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   } else {
     doc.setTextColor(156, 163, 175);
     doc.text("Historical coverage unavailable.", sbX + 3, y + 11);
-    doc.text("No geographic extrapolation.", sbX + 3, y + 15);
+    doc.text("Calibrated for Great Britain only.", sbX + 3, y + 15);
+    doc.text("No geographic extrapolation.", sbX + 3, y + 19);
   }
 
   // Box 2: Road Risk Analysis (GNN)
@@ -534,12 +649,13 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.text(`Segments evaluated: ${sc.segments_on_route}`, scX + 3, y + 8.8);
     doc.text(`Critical segments: ${sc.critical_segments_count}`, scX + 3, y + 12.5);
     doc.text(`High-risk segments: ${sc.high_risk_segments_count}`, scX + 3, y + 16.2);
-    const peakText = sc.peak_gnn_risk != null ? `${(sc.peak_gnn_risk * 100).toFixed(1)}%` : "N/A";
+    const peakText = sc.peak_gnn_risk != null ? `${sc.peak_gnn_risk.toFixed(4)} (Index)` : "N/A";
     doc.text(`Peak structural risk index: ${peakText}`, scX + 3, y + 20);
   } else {
     doc.setTextColor(156, 163, 175);
     doc.text("Historical GNN segment model", scX + 3, y + 11);
     doc.text("unavailable for corridor.", scX + 3, y + 15);
+    doc.text("Calibrated for Great Britain only.", scX + 3, y + 19);
   }
 
   // Box 3: Severity Prediction (Collision Classifier Scope)
@@ -598,14 +714,14 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
   // Executive Assessment Summary
   if (safety_assessment.summary) {
-    checkPageBreak(10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.2);
-    doc.setTextColor(30, 41, 59);
     const wrappedSummary = doc.splitTextToSize(
       cleanPdfText(safety_assessment.summary),
       contentWidth,
     );
+    checkPageBreak(wrappedSummary.length * 3.3 + 3);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.2);
+    doc.setTextColor(30, 41, 59);
     doc.text(wrappedSummary, margin, y);
     y += wrappedSummary.length * 3.3 + 3;
   }
@@ -621,7 +737,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
     safety_assessment.key_factors.forEach((factor) => {
       const descLines = doc.splitTextToSize(cleanPdfText(factor.description), contentWidth - 24);
-      const cardHeight = Math.max(10.5, 5.5 + descLines.length * 3.2);
+      const cardHeight = Math.max(11, 6.0 + descLines.length * 3.2);
       checkPageBreak(cardHeight + 2);
 
       doc.setFillColor(248, 250, 252);
@@ -653,7 +769,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
   // Supporting Evidence Table
   if (safety_assessment.supporting_evidence.length > 0) {
-    checkPageBreak(14);
+    checkPageBreak(16);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.8);
     doc.setTextColor(15, 23, 42);
@@ -667,28 +783,43 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.setFontSize(6.2);
     doc.setTextColor(15, 23, 42);
     doc.text("SOURCE", margin + 2, y + 3.2);
-    doc.text("METRIC", margin + 42, y + 3.2);
-    doc.text("VALUE", margin + 92, y + 3.2);
-    doc.text("INTERPRETATION", margin + 120, y + 3.2);
+    doc.text("METRIC", margin + 40, y + 3.2);
+    doc.text("VALUE", margin + 80, y + 3.2);
+    doc.text("INTERPRETATION", margin + 114, y + 3.2);
     y += 5;
 
     safety_assessment.supporting_evidence.forEach((ev) => {
-      checkPageBreak(5.5);
+      const sourceLines = doc.splitTextToSize(cleanPdfText(ev.source), 36);
+      const metricLabel = cleanMetricLabel(ev.metric);
+      const metricLines = doc.splitTextToSize(metricLabel, 38);
+      const valueLines = doc.splitTextToSize(cleanPdfText(ev.value), 32);
+      const interpLines = doc.splitTextToSize(cleanPdfText(ev.interpretation), contentWidth - 116);
+
+      const maxLines = Math.max(
+        sourceLines.length,
+        metricLines.length,
+        valueLines.length,
+        interpLines.length,
+      );
+      const rowHeight = Math.max(5.5, maxLines * 3.0 + 2.5);
+      checkPageBreak(rowHeight + 1);
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.2);
       doc.setTextColor(51, 65, 85);
-      doc.text(cleanPdfText(ev.source).slice(0, 26), margin + 2, y + 3);
-      doc.text(cleanPdfText(ev.metric).slice(0, 30), margin + 42, y + 3);
+      doc.text(sourceLines, margin + 2, y + 3);
+      doc.text(metricLines, margin + 40, y + 3);
+
       doc.setFont("helvetica", "bold");
-      doc.text(cleanPdfText(ev.value).slice(0, 16), margin + 92, y + 3);
+      doc.text(valueLines, margin + 80, y + 3);
+
       doc.setFont("helvetica", "normal");
-      const interp = doc.splitTextToSize(cleanPdfText(ev.interpretation), contentWidth - 122);
-      doc.text(interp[0] || "", margin + 120, y + 3);
+      doc.text(interpLines, margin + 114, y + 3);
 
       doc.setDrawColor(241, 245, 249);
       doc.setLineWidth(0.2);
-      doc.line(margin, y + 4.5, pageWidth - margin, y + 4.5);
-      y += 4.8;
+      doc.line(margin, y + rowHeight - 0.5, pageWidth - margin, y + rowHeight - 0.5);
+      y += rowHeight;
     });
     y += 2;
   }
@@ -699,21 +830,25 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   renderSectionHeader("6. Grounded AI Synthesis", "Assisted Executive Summary");
 
   if (llm_synthesis.status === "available" && (llm_synthesis.headline || llm_synthesis.summary)) {
-    checkPageBreak(14);
-
     if (llm_synthesis.headline) {
+      const wrappedHeadline = doc.splitTextToSize(
+        cleanPdfText(llm_synthesis.headline),
+        contentWidth,
+      );
+      checkPageBreak(wrappedHeadline.length * 4.2 + 2);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8.5);
       doc.setTextColor(15, 23, 42);
-      doc.text(cleanPdfText(llm_synthesis.headline), margin, y + 2.5);
-      y += 5.5;
+      doc.text(wrappedHeadline, margin, y + 2.5);
+      y += wrappedHeadline.length * 4.2 + 2;
     }
 
     if (llm_synthesis.summary) {
+      const synthSummary = doc.splitTextToSize(cleanPdfText(llm_synthesis.summary), contentWidth);
+      checkPageBreak(synthSummary.length * 3.3 + 3.5);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.2);
       doc.setTextColor(51, 65, 85);
-      const synthSummary = doc.splitTextToSize(cleanPdfText(llm_synthesis.summary), contentWidth);
       doc.text(synthSummary, margin, y + 1.5);
       y += synthSummary.length * 3.3 + 3.5;
     }
@@ -728,8 +863,9 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
       y += 4;
 
       llm_synthesis.key_findings.forEach((kf) => {
+        const kfTitleLines = doc.splitTextToSize(cleanPdfText(kf.title), contentWidth - 24);
         const kfDesc = doc.splitTextToSize(cleanPdfText(kf.description), contentWidth - 24);
-        const kfHeight = Math.max(10, 5 + kfDesc.length * 3.1);
+        const kfHeight = Math.max(11, 4.5 + kfTitleLines.length * 3.2 + kfDesc.length * 3.0);
         checkPageBreak(kfHeight + 2);
 
         doc.setFillColor(248, 250, 252);
@@ -747,12 +883,12 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7);
         doc.setTextColor(15, 23, 42);
-        doc.text(cleanPdfText(kf.title), margin + 21, y + 4.5);
+        doc.text(kfTitleLines, margin + 21, y + 4.5);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(6.4);
         doc.setTextColor(71, 85, 105);
-        doc.text(kfDesc, margin + 21, y + 7.6);
+        doc.text(kfDesc, margin + 21, y + 4.5 + kfTitleLines.length * 3.2);
 
         y += kfHeight + 1.8;
       });
@@ -768,11 +904,15 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
       y += 4;
 
       llm_synthesis.recommendations.forEach((rec, idx) => {
-        const recReason = doc.splitTextToSize(
+        const actionLines = doc.splitTextToSize(
+          `${idx + 1}. ${cleanPdfText(rec.action)}`,
+          contentWidth - 8,
+        );
+        const reasonLines = doc.splitTextToSize(
           `Rationale: ${cleanPdfText(rec.reason)}`,
           contentWidth - 8,
         );
-        const recHeight = Math.max(10, 5 + recReason.length * 3.1);
+        const recHeight = Math.max(11, 4.5 + actionLines.length * 3.2 + reasonLines.length * 3.0);
         checkPageBreak(recHeight + 2);
 
         doc.setFillColor(248, 250, 252);
@@ -782,12 +922,12 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7);
         doc.setTextColor(15, 23, 42);
-        doc.text(`${idx + 1}. ${cleanPdfText(rec.action)}`, margin + 3, y + 4);
+        doc.text(actionLines, margin + 3, y + 4);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(6.4);
         doc.setTextColor(71, 85, 105);
-        doc.text(recReason, margin + 3, y + 7.4);
+        doc.text(reasonLines, margin + 3, y + 4 + actionLines.length * 3.2);
 
         y += recHeight + 1.8;
       });
@@ -840,6 +980,14 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
           "Severity Prediction predicts individual collision severity from crash-level inputs and is therefore excluded from prospective route-wide corridor risk assessment.",
         );
       }
+      continue;
+    }
+
+    // Deduplicate partial/unsupported TfL coverage notes
+    if (/tfl.*(?:greater london|portion only|unmonitored)/i.test(cleanLim)) {
+      if (seenLimits.has("tfl_partial")) continue;
+      seenLimits.add("tfl_partial");
+      deduplicatedLimitations.push(cleanLim);
       continue;
     }
 
@@ -911,21 +1059,34 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
   doc.text(`* Weather: ${provenance.weather_provider || "Open-Meteo"}`, margin + 3, y + 14.1);
 
   const midProvX = margin + provColW;
-  doc.text(`* Traffic: ${provenance.traffic_provider || "Unavailable"}`, midProvX, y + 7.5);
-  doc.text(`* Incidents: ${provenance.incident_provider || "Unavailable"}`, midProvX, y + 10.8);
+  const trProvText =
+    provenance.traffic_coverage_status === "provider_partially_supported"
+      ? `${provenance.traffic_provider || "TfL"} (London portion only)`
+      : provenance.traffic_coverage_status === "provider_unsupported_for_geography"
+        ? "Unsupported for geography"
+        : provenance.traffic_provider || "Unavailable";
+
+  const incProvText =
+    provenance.incident_coverage_status === "provider_partially_supported"
+      ? `${provenance.incident_provider || "TfL"} (London portion only)`
+      : provenance.incident_coverage_status === "provider_unsupported_for_geography"
+        ? "Unsupported for geography"
+        : provenance.incident_provider || "Unavailable";
+
+  doc.text(`* Traffic: ${trProvText}`, midProvX, y + 7.5);
+  doc.text(`* Incidents: ${incProvText}`, midProvX, y + 10.8);
   doc.text(`* Severity Prediction: Excluded from route score`, midProvX, y + 14.1);
 
   const rightProvX = margin + provColW * 2;
-  doc.text(
-    `* Hotspot Explorer: ${provenance.student_b_used ? `Used (${provenance.matched_hotspots_count} matched)` : "Not used"}`,
-    rightProvX,
-    y + 7.5,
-  );
-  doc.text(
-    `* Road Risk Analysis: ${provenance.student_c_used ? `Used (${provenance.matched_segments_count} matched)` : "Not used"}`,
-    rightProvX,
-    y + 10.8,
-  );
+  const sbProvText = provenance.historical_data_available
+    ? `Used (${provenance.matched_hotspots_count} matched)`
+    : "Unsupported for geography";
+  const scProvText = provenance.historical_data_available
+    ? `Used (${provenance.matched_segments_count} matched)`
+    : "Unsupported for geography";
+
+  doc.text(`* Hotspot Explorer: ${sbProvText}`, rightProvX, y + 7.5);
+  doc.text(`* Road Risk Analysis: ${scProvText}`, rightProvX, y + 10.8);
   doc.text(
     `* Gemini Synthesis: ${provenance.gemini_used ? "Active" : "Unavailable"}`,
     rightProvX,
