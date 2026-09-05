@@ -297,6 +297,7 @@ To prevent falsely conflating "unmonitored" regions with "zero incidents", the A
 - `provider_not_configured`: Provider credentials or settings not supplied.
 
 These states are reported in:
+
 - `live_context.incidents_coverage`
 - `live_context.traffic.coverage_status`
 - `live_context.weather.coverage_status`

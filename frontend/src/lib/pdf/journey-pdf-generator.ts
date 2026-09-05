@@ -437,7 +437,7 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
 
   const trCoverage = tr?.coverage_status || provenance.traffic_coverage_status;
 
-  if (trCoverage === "provider_unsupported_for_geography" || tr?.status === "unavailable") {
+  if (trCoverage === "provider_unsupported_for_geography") {
     doc.setTextColor(156, 163, 175);
     doc.text("TfL traffic feed unsupported for this geography.", trafficX + 3, y + 10);
     doc.text("TfL monitoring covers Greater London only.", trafficX + 3, y + 14);
