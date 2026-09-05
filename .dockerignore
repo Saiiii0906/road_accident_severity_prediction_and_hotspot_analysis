@@ -1,0 +1,46 @@
+# Git and VCS
+.git
+.github
+.gitignore
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Frontend
+frontend/
+node_modules/
+
+# Python Virtual Environments & Caches
+backend/venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Heavy Machine Learning Artifacts (Mounted via Volume at Runtime)
+student_A/models/accident_severity_model.pkl
+
+# Raw & Intermediate Large CSV Datasets
+data/output/processed_data.csv
+data/output/accident_clusters.csv
+data/output/processed_coordinates.csv
+data/raw/
+
+# Documentation, Notebooks, Research & Other Student Folders
+notebooks/
+reports/
+student_D/
+docs/
+
+# Secrets, Environment Files & Logs
+.env
+.env.*
+*.log
+*.tmp*
+scratch/

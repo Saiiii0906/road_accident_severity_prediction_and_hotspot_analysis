@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vantage-backend:latest
+    container_name: vantage-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      # Pass through external secrets / keys without storing them in this file
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      # Optional model acquisition config (used only if model is not mounted)
+      - VANTAGE_MODEL_SOURCE_URL=${VANTAGE_MODEL_SOURCE_URL:-}
+      - VANTAGE_MODEL_SHA256=${VANTAGE_MODEL_SHA256:-}
+    volumes:
+      # Mount the local 7.80 GB model file into the container as read-only
+      - ./student_A/models/accident_severity_model.pkl:/app/student_A/models/accident_severity_model.pkl:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

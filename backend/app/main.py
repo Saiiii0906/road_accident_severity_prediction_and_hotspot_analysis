@@ -57,7 +57,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         SeverityModelManager.get_instance().load()
         logger.info("Student A Severity Model loaded and ready.")
     except Exception as exc:
-        logger.error("Warning: Could not pre-load Student A model at startup: %s", exc)
+        logger.error("Critical: Could not load Student A severity model at startup: %s", exc)
+        raise exc
 
     try:
         HotspotDataManager().load()

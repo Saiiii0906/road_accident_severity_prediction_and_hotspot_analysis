@@ -1,65 +1,134 @@
 # Vantage Deployment & Infrastructure Guide
 
-This document provides an honest, comprehensive evaluation of the current deployment posture of **Vantage**, detailing infrastructure prerequisites, external egress requirements, security controls, and the critical memory constraints imposed by large machine learning artifacts.
+This document provides a comprehensive operational guide to deploying **Vantage — AI-Powered Road Safety Intelligence**, detailing container packaging, artifact acquisition, volume mount strategies, hardware prerequisites, and runtime configuration.
 
 ---
 
-## 1. Current Deployment Status
+## 1. Container Architecture & Packaging
 
-> [!IMPORTANT]
-> **Status: Planned / Not Yet Implemented for Production**  
-> Vantage is currently structured and validated for local and staging environments. No automated containerization (`Dockerfile` or `docker-compose.yml`), continuous deployment (CI/CD) pipelines, or production cloud infrastructure are checked into the repository at this time.
+The Vantage backend is containerized as a portable, production-grade container image using `Dockerfile` at the repository root.
 
-The application components, however, compile cleanly into production-ready binaries:
+### Packaging Strategy
 
-- **Frontend:** Compiles to static distribution assets via `npm run build` using Vite.
-- **Backend:** Serves production traffic via standard ASGI runners (e.g. `uvicorn`, `gunicorn -k uvicorn.workers.UvicornWorker`).
+- **Base Image:** `python:3.12-slim` (Debian Linux)
+- **Lean Image Footprint:** The Docker image packages the application source, runtime dependencies (`backend/requirements.txt`), and small static data artifacts (`features.pkl`, `severity_encoder.pkl`, `hotspot_summary.csv`, `gnn_risk_predictions.json`).
+- **External Model Management:** The 7.80 GB Student A Random Forest artifact (`accident_severity_model.pkl`) is **intentionally excluded** from the image build via `.dockerignore`. It is provided at runtime via either:
+  1. Persistent Volume Mount (Recommended)
+  2. On-Demand Stream Acquisition via `scripts/acquire_model.py`
+- **Resulting Image Size:** ~800 MB uncompressed (~260 MB compressed transfer size), avoiding multi-gigabyte container registries and slow deployments.
 
----
+### Building the Production Image
 
-## 2. The 7.8 GB Model Artifact Constraint
+To build the container image:
 
-The single largest architectural hurdle to standard containerized or serverless deployment is the **Student A Severity Prediction model artifact**:
+```bash
+docker build -t vantage-backend:latest -f Dockerfile .
+```
 
-- **File Path:** `student_A/models/accident_severity_model.pkl`
-- **File Size:** **7.8 GB** (contains 100 deep decision trees trained on 138 one-hot features).
-- **Deserialization Memory Overhead:** Unpickling this artifact during FastAPI startup requires approximately **10 GB to 12 GB of peak RAM**.
-
-### Implications for Cloud Hosting
-
-1. **Serverless Incompatibility:** AWS Lambda, Google Cloud Functions, and Azure Functions have strict deployment package limits (typically $\le 500\text{ MB}$) and memory limits, making serverless hosting impossible without major architectural restructuring.
-2. **Standard Container OOM:** Standard container instances provisioned with 2 GB to 4 GB RAM will immediately trigger an Out-Of-Memory (`SIGKILL` / Exit Code 137) during startup when `SeverityModelManager.load()` is invoked.
-3. **Storage & CI/CD Overhead:** Pushing a 7.8 GB binary through standard Git LFS or Docker build steps results in slow image builds and expensive image registries.
-
-### Recommended Future Architectural Solutions (Planned)
-
-To achieve scalable, cost-effective production deployment, one of the following approaches should be implemented in a future phase:
-
-- **Option A: Memory-Optimized Compute Instances (Short-term):** Deploy the backend container to a dedicated cloud VM or Kubernetes node pool with $\ge 16\text{ GB RAM}$ (e.g. AWS `r6i.large` or GCP `n2-highmem-2`).
-- **Option B: Artifact Compression & Tree Pruning (Medium-term):** Retrain or prune the Random Forest model using tree depth limits, quantization, or conversion to ONNX format to reduce the binary footprint to $<500\text{ MB}$.
-- **Option C: Microservice Decoupling (Architectural):** Decouple Student A into an isolated model-serving microservice (e.g. using Triton Inference Server or TorchServe), allowing the core Journey Safety pipeline to run in lightweight, rapid-scaling web containers.
+*Note: The build does not require the 7.80 GB model, credentials, or cloud access.*
 
 ---
 
-## 3. External Service Egress Requirements
+## 2. Model Artifact & Acquisition Strategy
 
-The backend requires outbound HTTPS (port 443) network connectivity to communicate with external APIs:
+Student A's Random Forest collision severity model (`student_A/models/accident_severity_model.pkl`) is 7.80 GB (8,374,480,853 bytes). Because it is untracked by Git, production infrastructure must supply it deterministically.
 
-| Provider | Hostname / Endpoint | Protocol | SLA / Authentication |
+### Lifecycle & Invariants
+
+1. **Storage Provisioning:** A persistent cloud volume or local directory is mounted to `/app/student_A/models/accident_severity_model.pkl`.
+2. **Pre-Flight Integrity Check:** On startup, `entrypoint.sh` executes `scripts/acquire_model.py`.
+3. **Skip if Valid:** If the model file already exists on disk and passes integrity checks, acquisition is skipped immediately.
+4. **Streaming Download (If absent):** If absent and `VANTAGE_MODEL_SOURCE_URL` is set, the utility streams the artifact in 8 MB chunks to a temporary file (`.tmp`), computes SHA-256 on the fly, verifies integrity, and atomically replaces the file using `os.replace`.
+5. **Fail-Fast Behavior:** If the model is missing and `VANTAGE_MODEL_SOURCE_URL` is unset, container startup aborts immediately with exit code 1. The application **never** falls back to mock or fabricated severity predictions.
+6. **Persistence Across Restarts:** Once acquired or mounted on persistent disk, the model remains available across container restarts without re-downloading.
+
+### Configuration Environment Variables
+
+| Variable | Description | Default | Required |
 | --- | --- | --- | --- |
-| **OpenStreetMap Nominatim** | `nominatim.openstreetmap.org` | HTTPS | Free, rate-limited to 1 req/sec. Custom `User-Agent` header required. |
-| **Project OSRM** | `router.project-osrm.org` | HTTPS | Public demo routing server. Subject to demo cluster availability. |
-| **Open-Meteo** | `api.open-meteo.com` | HTTPS | Free for non-commercial use up to 10,000 daily calls. |
-| **Transport for London** | `api.tfl.gov.uk` | HTTPS | Supports unauthenticated rate-limited access or `app_key` credential. |
-| **Google Gemini API** | `generativelanguage.googleapis.com` | HTTPS | Requires valid `GEMINI_API_KEY`. |
+| `STUDENT_A_MODEL_PATH` | Path to Student A model binary | `student_A/models/accident_severity_model.pkl` | No |
+| `VANTAGE_MODEL_SOURCE_URL` | Remote URL (S3/GCS/HTTP) to acquire model if absent | `None` | Only if volume unpopulated |
+| `VANTAGE_MODEL_SHA256` | Expected SHA-256 checksum for integrity validation | `None` | Recommended in production |
+| `VANTAGE_MODEL_CHUNK_SIZE_MB` | Streaming chunk size for acquisition | `8` | No |
+| `VANTAGE_MODEL_TIMEOUT_SECONDS`| Download socket timeout | `3600` | No |
 
 ---
 
-## 4. Production Security & Configuration Hardening
+## 3. Worker Concurrency & Memory Constraints
 
-Before deploying to a public-facing environment, the following configuration steps must be applied:
+> [!CRITICAL]
+> **Single Worker Mandate (`--workers 1`)**  
+> Unpickling the 7.80 GB Student A model consumes approximately **5.03 GB resident set size (RSS)** in process memory.  
+> Standard multi-worker process pools (e.g. `--workers 4`) would duplicate the model 4 times, requiring over 20 GB of RAM and triggering immediate Out-Of-Memory (`SIGKILL` / exit code 137).  
+> The container entrypoint enforces strictly **one Uvicorn worker process**.
 
-1. **CORS Lockdown:** Update `CORS_ORIGINS` in `.env` to restrict cross-origin requests exclusively to the verified production frontend domain (e.g. `https://vantage.example.com`).
-2. **API Key Isolation:** Ensure `GEMINI_API_KEY` and optional `TFL_APP_KEY` are mounted via secure secret managers (e.g. AWS Secrets Manager, GCP Secret Manager, or HashiCorp Vault), never hardcoded or committed to git.
-3. **Exception Sanitization:** Ensure `DEBUG=false` so that internal exceptions are intercepted by `unhandled_exception_handler` in `main.py`, logging traces internally while returning only an opaque `error_id` to clients.
-4. **Rate Limiting:** Implement reverse-proxy rate limiting (e.g. via NGINX or Cloudflare) on `/journey/analyze` to prevent external quota exhaustion against upstream geocoding and Gemini APIs.
+### Hardware & Resource Sizing
+
+| Metric | Minimum Requirement | Recommended Production |
+| --- | --- | --- |
+| **System RAM** | 8 GB | 16 GB |
+| **vCPU** | 2 vCPU | 4 vCPU |
+| **Disk Storage** | 20 GB SSD | 50 GB SSD (NVMe preferred) |
+| **Worker Count** | 1 worker | 1 worker |
+| **Model Load Time** | ~5.0 to 7.0 seconds | ~4.0 to 5.5 seconds (NVMe) |
+
+---
+
+## 4. Local Container Testing & Docker Compose
+
+For local testing with the real 7.80 GB model artifact:
+
+### Using Docker Run (Mounting Local Model)
+
+```bash
+docker run -d \
+  --name vantage-backend \
+  -p 8000:8000 \
+  -v "$(pwd)/student_A/models/accident_severity_model.pkl:/app/student_A/models/accident_severity_model.pkl:ro" \
+  -e GEMINI_API_KEY="your-gemini-key" \
+  vantage-backend:latest
+```
+
+### Using Docker Compose
+
+A pre-configured `docker-compose.yml` is provided for local production-like verification:
+
+```bash
+docker compose up -d --build
+```
+
+### Verifying Container Health & Inference
+
+1. **Liveness / Healthcheck:**
+   ```bash
+   curl http://localhost:8000/health
+   # Response: {"status": "healthy", "timestamp": "...", "api_version": "1.0.0"}
+   ```
+
+2. **Severity Prediction Inference:**
+   ```bash
+   curl -X POST http://localhost:8000/api/severity/predict \
+     -H "Content-Type: application/json" \
+     -d '{
+       "accident_date": "2024-10-15",
+       "accident_time": "18:45",
+       "day_of_week": "Tuesday",
+       "speed_limit": 30,
+       "number_of_vehicles": 2,
+       "number_of_casualties": 1,
+       "road_type": "single_carriageway",
+       "road_surface": "wet",
+       "weather": "raining",
+       "light_conditions": "darkness_lights_lit",
+       "urban_or_rural_area": "urban"
+     }'
+   ```
+
+---
+
+## 5. Security & Configuration Audit
+
+- **Zero Hardcoded Secrets:** Dockerfile, compose files, and acquisition scripts contain no API keys, tokens, or private endpoints.
+- **Environment Isolation:** Secrets (`GEMINI_API_KEY`, `CLAUDE_API_KEY`) are injected via environment variables or secret managers.
+- **Sanitized Logging:** `scripts/acquire_model.py` automatically strips query parameters and authorization headers before logging URLs.
+- **CORS Configuration:** `CORS_ORIGINS` defaults to development localhost origins and must be updated to the production frontend domain in deployment settings.

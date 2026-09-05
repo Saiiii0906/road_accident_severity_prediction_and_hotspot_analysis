@@ -135,9 +135,17 @@ class Settings(BaseSettings):
         """Directory containing Student A model artifacts."""
         return self.PROJECT_ROOT / "student_A" / "models"
 
+    STUDENT_A_MODEL_PATH_ENV: str | None = Field(
+        default=None,
+        alias="STUDENT_A_MODEL_PATH",
+    )
+
     @property
     def STUDENT_A_MODEL_PATH(self) -> Path:
         """Path to Student A Random Forest model binary."""
+        if self.STUDENT_A_MODEL_PATH_ENV:
+            p = Path(self.STUDENT_A_MODEL_PATH_ENV)
+            return p if p.is_absolute() else self.PROJECT_ROOT / p
         return self.STUDENT_A_MODELS_DIR / "accident_severity_model.pkl"
 
     @property
