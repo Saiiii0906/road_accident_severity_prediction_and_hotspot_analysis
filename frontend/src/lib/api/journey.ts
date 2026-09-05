@@ -50,8 +50,17 @@ export interface RouteInfo {
   segments: RouteSegment[];
 }
 
+export type ProviderCoverageStatus =
+  | "provider_supported"
+  | "provider_partially_supported"
+  | "provider_unsupported_for_geography"
+  | "provider_failed"
+  | "provider_returned_no_results"
+  | "provider_not_configured";
+
 export interface TrafficContext {
   status?: DataAvailabilityStatus | null;
+  coverage_status?: ProviderCoverageStatus | null;
   congestion_level?: string | null;
   delay_minutes?: number | null;
   description?: string | null;
@@ -60,6 +69,7 @@ export interface TrafficContext {
 
 export interface WeatherContext {
   status?: DataAvailabilityStatus | null;
+  coverage_status?: ProviderCoverageStatus | null;
   condition?: string | null;
   temperature_c?: number | null;
   precipitation_probability?: number | null;
@@ -90,6 +100,9 @@ export interface LiveContext {
   weather?: WeatherContext | null;
   traffic?: TrafficContext | null;
   incidents: IncidentContext[];
+  incidents_status?: DataAvailabilityStatus | null;
+  incidents_coverage?: ProviderCoverageStatus | null;
+  incidents_description?: string | null;
   providers?: LiveContextProviders | null;
 }
 
@@ -238,6 +251,12 @@ export interface JourneyProvenance {
   weather_provider?: string | null;
   traffic_provider?: string | null;
   incident_provider?: string | null;
+  traffic_coverage_status?: ProviderCoverageStatus | null;
+  incident_coverage_status?: ProviderCoverageStatus | null;
+  weather_coverage_status?: ProviderCoverageStatus | null;
+  traffic_queried?: boolean;
+  incident_queried?: boolean;
+  weather_queried?: boolean;
   live_data_available: boolean;
   historical_data_available: boolean;
   historical_coverage_region?: string | null;

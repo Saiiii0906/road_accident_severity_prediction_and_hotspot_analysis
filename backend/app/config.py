@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     HISTORICAL_CORRIDOR_RADIUS_METERS: float = 1000.0
     HISTORICAL_COVERAGE_BOUNDS: tuple[float, float, float, float] = (50.0, 60.5, -6.5, 2.0)
 
+    # TfL Geographic Coverage Bounds (Greater London: min_lat, max_lat, min_lon, max_lon)
+    TFL_COVERAGE_BOUNDS: tuple[float, float, float, float] = (51.25, 51.72, -0.55, 0.35)
+
     @property
     def BASE_DIR(self) -> Path:
         """Directory containing this config file (backend/app/)."""

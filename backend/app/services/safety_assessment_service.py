@@ -13,6 +13,7 @@ from app.schemas.journey import (
     DataAvailabilityStatus,
     HistoricalEvidenceSchema,
     LiveContextSchema,
+    ProviderCoverageStatus,
     RouteInfoSchema,
     SafetyAssessmentSchema,
     SafetyDataCoverageSchema,
@@ -38,13 +39,20 @@ class SafetyAssessmentService:
         limitations: list[str] = []
 
         # 1. Data Coverage Assessment
+        incidents_data_status = (
+            live.incidents_status
+            if hasattr(live, "incidents_status") and live.incidents_status is not None
+            else (
+                DataAvailabilityStatus.AVAILABLE
+                if live.incidents
+                else DataAvailabilityStatus.UNAVAILABLE
+            )
+        )
         data_coverage = SafetyDataCoverageSchema(
             route=route.status,
             weather=live.weather.status if live.weather else DataAvailabilityStatus.UNAVAILABLE,
             traffic=live.traffic.status if live.traffic else DataAvailabilityStatus.UNAVAILABLE,
-            incidents=DataAvailabilityStatus.AVAILABLE if live.incidents else (
-                DataAvailabilityStatus.AVAILABLE if live.status in (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL) else DataAvailabilityStatus.UNAVAILABLE
-            ),
+            incidents=incidents_data_status,
             historical=historical.status,
         )
 
@@ -97,10 +105,58 @@ class SafetyAssessmentService:
                     interpretation="Real-time traffic monitor along designated road corridors.",
                 )
             )
-        else:
-            limitations.append(
-                "Live traffic monitoring is unavailable for this corridor; real-time congestion delays cannot be factored into the assessment."
+        elif live.traffic and (
+            live.traffic.status == DataAvailabilityStatus.PARTIAL
+            or getattr(live.traffic, "coverage_status", None) == ProviderCoverageStatus.PARTIALLY_SUPPORTED
+        ):
+            cong = (live.traffic.congestion_level or "low").lower()
+            if cong in ("severe", "critical"):
+                traffic_sev = "critical"
+            elif cong in ("serious", "heavy"):
+                traffic_sev = "high"
+            elif cong in ("moderate", "medium"):
+                traffic_sev = "moderate"
+            else:
+                traffic_sev = "low"
+
+            delay_text = (
+                f" (+{live.traffic.delay_minutes} min delay)"
+                if live.traffic.delay_minutes and live.traffic.delay_minutes > 0
+                else ""
             )
+            key_factors.append(
+                SafetyKeyFactorSchema(
+                    factor="live_traffic",
+                    title="Corridor Traffic Flow (London Portion Only)",
+                    severity=traffic_sev,
+                    description=live.traffic.description or f"London corridor traffic is {cong}{delay_text}; remainder of route beyond Greater London is unmonitored.",
+                    source="TfL Road Network (London only)",
+                )
+            )
+            supporting_evidence.append(
+                SafetyEvidenceItemSchema(
+                    source="TfL Road Network (London only)",
+                    metric="traffic_congestion_london_portion",
+                    value=f"{cong.capitalize()}{delay_text} (London portion)",
+                    interpretation="Real-time traffic monitor for Greater London section of route; remainder of corridor is unmonitored.",
+                )
+            )
+            limitations.append(
+                "Live traffic monitoring is partial: TfL traffic feed only covers the Greater London portion of this route; the remainder of the corridor is unmonitored."
+            )
+        else:
+            if (
+                live.traffic
+                and getattr(live.traffic, "coverage_status", None)
+                == ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY
+            ):
+                limitations.append(
+                    "Live traffic monitoring is unavailable: TfL traffic feed does not cover this geography."
+                )
+            else:
+                limitations.append(
+                    "Live traffic monitoring is unavailable for this corridor; real-time congestion delays cannot be factored into the assessment."
+                )
 
         # 4. Live Weather Context
         if live.weather and live.weather.status == DataAvailabilityStatus.AVAILABLE:
@@ -141,7 +197,53 @@ class SafetyAssessmentService:
             )
 
         # 5. Active Road Hazards & Disruptions
-        if live.incidents:
+        inc_status = getattr(live, "incidents_status", None) or (
+            DataAvailabilityStatus.AVAILABLE if live.incidents else DataAvailabilityStatus.UNAVAILABLE
+        )
+        inc_coverage = getattr(live, "incidents_coverage", None)
+
+        if inc_coverage == ProviderCoverageStatus.PARTIALLY_SUPPORTED or inc_status == DataAvailabilityStatus.PARTIAL:
+            # Partial coverage: TfL covers London portion of route only
+            limitations.append(
+                "Active road disruption data is partial: TfL disruptions feed only covers the Greater London portion of this route; the remainder of the corridor is unmonitored."
+            )
+            if live.incidents:
+                severities = [inc.severity.lower() for inc in live.incidents if inc.severity]
+                if any(s in ("severe", "closure", "blocked") for s in severities):
+                    inc_sev = "critical"
+                elif any(s in ("major", "serious") for s in severities):
+                    inc_sev = "high"
+                else:
+                    inc_sev = "moderate"
+
+                top_desc = live.incidents[0].description
+                key_factors.append(
+                    SafetyKeyFactorSchema(
+                        factor="active_disruptions",
+                        title="Active Road Hazards & Disruptions (London Portion Only)",
+                        severity=inc_sev,
+                        description=f"{len(live.incidents)} active disruption(s) detected on London portion of route (e.g. {top_desc}); outer corridor is unmonitored.",
+                        source="TfL Disruptions Feed (London only)",
+                    )
+                )
+                supporting_evidence.append(
+                    SafetyEvidenceItemSchema(
+                        source="TfL Disruptions Feed (London only)",
+                        metric="active_disruptions_london_portion",
+                        value=f"{len(live.incidents)} active (London portion)",
+                        interpretation="Active roadworks, lane closures, or incident notices on Greater London section of route; remainder of corridor is unmonitored.",
+                    )
+                )
+            else:
+                supporting_evidence.append(
+                    SafetyEvidenceItemSchema(
+                        source="TfL Disruptions Feed (London only)",
+                        metric="active_disruptions_london_portion",
+                        value="0 detected (London portion)",
+                        interpretation="No active major road hazards or closures reported on Greater London section of route; remainder of corridor is unmonitored.",
+                    )
+                )
+        elif live.incidents:
             # Determine peak disruption severity
             severities = [inc.severity.lower() for inc in live.incidents if inc.severity]
             if any(s in ("severe", "closure", "blocked") for s in severities):
@@ -169,7 +271,8 @@ class SafetyAssessmentService:
                     interpretation="Active roadworks, lane closures, or incident notices on monitored corridor links.",
                 )
             )
-        elif live.status in (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL):
+        elif inc_status == DataAvailabilityStatus.AVAILABLE and inc_coverage == ProviderCoverageStatus.RETURNED_NO_RESULTS:
+            # TfL disruptions feed was eligible, queried, and legitimately returned 0 disruptions
             supporting_evidence.append(
                 SafetyEvidenceItemSchema(
                     source="TfL Disruptions Feed",
@@ -179,9 +282,14 @@ class SafetyAssessmentService:
                 )
             )
         else:
-            limitations.append(
-                "Active road disruption feed is unavailable for this corridor."
-            )
+            if inc_coverage == ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY:
+                limitations.append(
+                    "Active road disruption data is unavailable: TfL disruptions feed does not cover this geography."
+                )
+            else:
+                limitations.append(
+                    "Active road disruption feed is unavailable for this corridor."
+                )
 
         # 6. Historical Grounding: Coverage Check & Evidence
         historical_supported = (
@@ -345,12 +453,28 @@ class SafetyAssessmentService:
         live_summary = []
         if live.weather and live.weather.status == DataAvailabilityStatus.AVAILABLE:
             live_summary.append(f"weather: {live.weather.condition} ({live.weather.precipitation_probability}% rain)")
-        if live.traffic and live.traffic.status == DataAvailabilityStatus.AVAILABLE:
-            live_summary.append(f"traffic: {live.traffic.congestion_level}")
+
+        if live.traffic:
+            if live.traffic.status == DataAvailabilityStatus.AVAILABLE:
+                live_summary.append(f"traffic: {live.traffic.congestion_level}")
+            elif (
+                live.traffic.status == DataAvailabilityStatus.PARTIAL
+                or getattr(live.traffic, "coverage_status", None) == ProviderCoverageStatus.PARTIALLY_SUPPORTED
+            ):
+                live_summary.append(f"traffic: {live.traffic.congestion_level} (London portion only)")
+
         if live.incidents:
-            live_summary.append(f"{len(live.incidents)} active disruption(s)")
-        elif live.status in (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL):
+            if (
+                inc_coverage == ProviderCoverageStatus.PARTIALLY_SUPPORTED
+                or inc_status == DataAvailabilityStatus.PARTIAL
+            ):
+                live_summary.append(f"{len(live.incidents)} active disruption(s) in London portion")
+            else:
+                live_summary.append(f"{len(live.incidents)} active disruption(s)")
+        elif inc_status == DataAvailabilityStatus.AVAILABLE and inc_coverage == ProviderCoverageStatus.RETURNED_NO_RESULTS:
             live_summary.append("0 disruptions")
+        elif inc_coverage == ProviderCoverageStatus.PARTIALLY_SUPPORTED or inc_status == DataAvailabilityStatus.PARTIAL:
+            live_summary.append("0 disruptions in London portion (outer unmonitored)")
 
         if live_summary:
             summary_parts.append("Live context: " + ", ".join(live_summary) + ".")

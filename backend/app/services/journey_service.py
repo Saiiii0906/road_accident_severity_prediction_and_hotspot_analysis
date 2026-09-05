@@ -21,12 +21,14 @@ from app.schemas.journey import (
     LiveContextProvidersSchema,
     LiveContextSchema,
     LLMSynthesisSchema,
+    ProviderCoverageStatus,
     RouteInfoSchema,
     SafetyAssessmentSchema,
     TrafficContextSchema,
     WeatherContextSchema,
 )
 from app.services.corridor_matching_service import CorridorMatchingService
+from app.services.provider_coverage_service import ProviderCoverageService
 from app.services.geocoding_service import (
     GeocodingProvider,
     LocationNotFoundError,
@@ -196,6 +198,12 @@ class JourneyService:
             weather_provider=live_context.providers.weather if live_context.providers else None,
             traffic_provider=live_context.providers.traffic if live_context.providers else None,
             incident_provider=live_context.providers.incidents if live_context.providers else None,
+            traffic_coverage_status=live_context.traffic.coverage_status if live_context.traffic else None,
+            incident_coverage_status=live_context.incidents_coverage,
+            weather_coverage_status=live_context.weather.coverage_status if live_context.weather else None,
+            traffic_queried=live_context.traffic_queried,
+            incident_queried=live_context.incident_queried,
+            weather_queried=live_context.weather_queried,
             live_data_available=live_context.status in (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL),
             historical_data_available=historical_evidence.status in (DataAvailabilityStatus.AVAILABLE, DataAvailabilityStatus.PARTIAL),
             historical_coverage_region=historical_evidence.coverage.region if historical_evidence.coverage else None,
@@ -257,7 +265,7 @@ class JourneyService:
     ) -> LiveContextSchema:
         """Fetch real-time traffic, weather, and active hazard data along corridor."""
         # 1. Determine representative route coordinate for weather
-        coords = route.geometry.coordinates if route.geometry else []
+        coords = ProviderCoverageService.extract_route_coordinates(route)
         if coords:
             mid_idx = len(coords) // 2
             mid_lon, mid_lat = coords[mid_idx]
@@ -267,9 +275,10 @@ class JourneyService:
         else:
             mid_lat, mid_lon = 51.5074, -0.1278
 
-        # 2. Weather Subsystem (Open-Meteo)
+        # 2. Weather Subsystem (Open-Meteo: global coverage)
         weather_ctx: Optional[WeatherContextSchema] = None
         weather_prov_name: Optional[str] = None
+        weather_queried = False
         try:
             weather_ctx = self.weather.get_weather(
                 lat=mid_lat,
@@ -277,54 +286,133 @@ class JourneyService:
                 travel_date=request.travel_date,
                 travel_time=request.travel_time,
             )
+            weather_queried = True
             if weather_ctx.status == DataAvailabilityStatus.AVAILABLE:
                 weather_prov_name = "Open-Meteo"
+                weather_ctx.coverage_status = ProviderCoverageStatus.SUPPORTED
+            else:
+                weather_ctx.coverage_status = ProviderCoverageStatus.FAILED
         except Exception as exc:
             logger.error("Weather provider query failed: %s", exc)
             weather_ctx = WeatherContextSchema(
                 status=DataAvailabilityStatus.UNAVAILABLE,
+                coverage_status=ProviderCoverageStatus.FAILED,
                 condition=None,
                 description=f"Weather provider error: {exc}",
             )
 
-        # 3. Traffic Subsystem (TfL / Open Road Network)
+        # 3. Check TfL Geographic Scope (London-specific)
+        tfl_eligible, tfl_coverage, tfl_reason = ProviderCoverageService.check_tfl_eligibility(route)
+
         traffic_ctx: Optional[TrafficContextSchema] = None
         traffic_prov_name: Optional[str] = None
-        try:
-            traffic_ctx = self.traffic.get_traffic(route)
-            if traffic_ctx.status == DataAvailabilityStatus.AVAILABLE:
-                traffic_prov_name = "TfL"
-        except Exception as exc:
-            logger.error("Traffic provider query failed: %s", exc)
-            traffic_ctx = TrafficContextSchema(
-                status=DataAvailabilityStatus.UNAVAILABLE,
-                description=f"Traffic provider error: {exc}",
-            )
+        traffic_queried = False
 
-        # 4. Incidents Subsystem (TfL Disruptions)
         incident_items: list[IncidentContextSchema] = []
         incident_status = DataAvailabilityStatus.UNAVAILABLE
+        incident_coverage = ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY
+        incident_desc: Optional[str] = None
         incident_prov_name: Optional[str] = None
-        try:
-            incident_status, incident_items = self.incidents.get_incidents(route)
-            if incident_status == DataAvailabilityStatus.AVAILABLE:
-                incident_prov_name = "TfL"
-        except Exception as exc:
-            logger.error("Incident provider query failed: %s", exc)
-            incident_status = DataAvailabilityStatus.UNAVAILABLE
-            incident_items = []
+        incident_queried = False
 
-        # 5. Determine composite status
+        if not tfl_eligible:
+            # Deterministic geographic scoping: TfL is never invoked outside Greater London
+            logger.info("TfL providers not eligible for route: %s", tfl_reason)
+            traffic_ctx = TrafficContextSchema(
+                status=DataAvailabilityStatus.UNAVAILABLE,
+                coverage_status=ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY,
+                congestion_level=None,
+                delay_minutes=None,
+                description="TfL traffic data unavailable for this geography.",
+                corridor_monitored=None,
+            )
+            traffic_queried = False
+
+            incident_status = DataAvailabilityStatus.UNAVAILABLE
+            incident_coverage = ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY
+            incident_desc = "TfL disruption data unavailable for this geography."
+            incident_items = []
+            incident_queried = False
+        else:
+            # 4. Traffic Subsystem (TfL / Open Road Network)
+            try:
+                traffic_ctx = self.traffic.get_traffic(route)
+                traffic_queried = True
+                if traffic_ctx.status == DataAvailabilityStatus.AVAILABLE:
+                    traffic_prov_name = "TfL"
+                    if tfl_coverage == ProviderCoverageStatus.PARTIALLY_SUPPORTED:
+                        traffic_ctx.status = DataAvailabilityStatus.PARTIAL
+                        traffic_ctx.coverage_status = ProviderCoverageStatus.PARTIALLY_SUPPORTED
+                        traffic_ctx.description = (
+                            "TfL traffic monitoring covers the Greater London portion of this route only; outer corridor is unmonitored."
+                        )
+                    else:
+                        traffic_ctx.coverage_status = ProviderCoverageStatus.SUPPORTED
+                else:
+                    traffic_prov_name = None
+                    traffic_ctx.coverage_status = ProviderCoverageStatus.RETURNED_NO_RESULTS
+            except Exception as exc:
+                logger.error("Traffic provider query failed: %s", exc)
+                traffic_queried = True
+                traffic_prov_name = None
+                traffic_ctx = TrafficContextSchema(
+                    status=DataAvailabilityStatus.UNAVAILABLE,
+                    coverage_status=ProviderCoverageStatus.FAILED,
+                    description=f"Traffic provider error: {exc}",
+                )
+
+            # 5. Incidents Subsystem (TfL Disruptions)
+            try:
+                raw_inc_status, incident_items = self.incidents.get_incidents(route)
+                incident_queried = True
+                if raw_inc_status == DataAvailabilityStatus.AVAILABLE:
+                    incident_prov_name = "TfL"
+                    if tfl_coverage == ProviderCoverageStatus.PARTIALLY_SUPPORTED:
+                        incident_status = DataAvailabilityStatus.PARTIAL
+                        incident_coverage = ProviderCoverageStatus.PARTIALLY_SUPPORTED
+                        if len(incident_items) > 0:
+                            incident_desc = (
+                                f"{len(incident_items)} active disruption(s) detected on London portion of route; outer corridor is unmonitored."
+                            )
+                        else:
+                            incident_desc = (
+                                "0 active disruptions detected on London portion of route; outer corridor is unmonitored."
+                            )
+                    else:
+                        incident_status = DataAvailabilityStatus.AVAILABLE
+                        if len(incident_items) > 0:
+                            incident_coverage = ProviderCoverageStatus.SUPPORTED
+                            incident_desc = f"{len(incident_items)} active disruption(s) detected along corridor."
+                        else:
+                            incident_coverage = ProviderCoverageStatus.RETURNED_NO_RESULTS
+                            incident_desc = "No active road disruptions reported on corridor."
+                else:
+                    incident_prov_name = None
+                    incident_status = DataAvailabilityStatus.UNAVAILABLE
+                    incident_coverage = ProviderCoverageStatus.FAILED
+                    incident_desc = "TfL disruptions feed temporarily unavailable."
+                    incident_items = []
+            except Exception as exc:
+                logger.error("Incident provider query failed: %s", exc)
+                incident_queried = True
+                incident_prov_name = None
+                incident_status = DataAvailabilityStatus.UNAVAILABLE
+                incident_coverage = ProviderCoverageStatus.FAILED
+                incident_desc = f"Incident provider error: {exc}"
+                incident_items = []
+
+        # 6. Determine composite status
         active_statuses = [
             weather_ctx.status if weather_ctx else DataAvailabilityStatus.UNAVAILABLE,
             traffic_ctx.status if traffic_ctx else DataAvailabilityStatus.UNAVAILABLE,
             incident_status,
         ]
         available_count = sum(1 for s in active_statuses if s == DataAvailabilityStatus.AVAILABLE)
+        partial_count = sum(1 for s in active_statuses if s == DataAvailabilityStatus.PARTIAL)
 
         if available_count == len(active_statuses):
             composite_status = DataAvailabilityStatus.AVAILABLE
-        elif available_count > 0:
+        elif available_count > 0 or partial_count > 0:
             composite_status = DataAvailabilityStatus.PARTIAL
         else:
             composite_status = DataAvailabilityStatus.UNAVAILABLE
@@ -340,6 +428,12 @@ class JourneyService:
             weather=weather_ctx,
             traffic=traffic_ctx,
             incidents=incident_items,
+            incidents_status=incident_status,
+            incidents_coverage=incident_coverage,
+            incidents_description=incident_desc,
+            weather_queried=weather_queried,
+            traffic_queried=traffic_queried,
+            incident_queried=incident_queried,
             providers=providers,
         )
 

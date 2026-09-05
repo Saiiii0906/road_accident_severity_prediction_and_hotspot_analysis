@@ -93,6 +93,7 @@ backend/app/
 ├── routes/              # Thin HTTP controller layer (request validation, status codes)
 ├── schemas/             # Pydantic v2 data transfer objects (DTOs)
 ├── services/            # Pure business logic and domain execution
+│   ├── provider_coverage_service.py # Geographic bounding box eligibility validation (TfL London & GB)
 │   ├── geocoding_service.py       # Nominatim forward geocoding with in-memory LRU cache
 │   ├── routing_service.py         # OSRM polyline routing & waypoint sampling
 │   ├── weather_service.py         # Open-Meteo atmospheric telemetry fetcher
@@ -113,6 +114,13 @@ backend/app/
 │   ├── report_grounding_service.py# Structured multi-model evidence aggregator
 │   └── report_prompt_service.py   # Infrastructure report prompt engineering
 ```
+
+### Geographic Gating & Provider Eligibility
+
+Before dispatching network calls to regional upstream APIs, `JourneyService` delegates boundary verification to `ProviderCoverageService`:
+
+- **TfL Feeds:** Evaluates whether route bounding box or sampled polyline coordinates intersect Greater London (`[51.25, 51.72] x [-0.55, 0.35]`). If outside, upstream calls to TfL are skipped, avoiding unnecessary network latency and establishing `provider_unsupported_for_geography`.
+- **Historical GB Models:** Validates coordinates against the Great Britain terrestrial bounding box (`[50.0, 60.5] x [-6.5, 2.0]`). Non-UK journeys mark Student B and Student C models as out-of-coverage rather than extrapolating UK statistics internationally.
 
 ---
 

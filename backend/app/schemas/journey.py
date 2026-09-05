@@ -21,6 +21,17 @@ class DataAvailabilityStatus(str, Enum):
     UNAVAILABLE = "unavailable"
 
 
+class ProviderCoverageStatus(str, Enum):
+    """Granular provider execution and geographic coverage state."""
+
+    SUPPORTED = "provider_supported"
+    PARTIALLY_SUPPORTED = "provider_partially_supported"
+    UNSUPPORTED_FOR_GEOGRAPHY = "provider_unsupported_for_geography"
+    FAILED = "provider_failed"
+    RETURNED_NO_RESULTS = "provider_returned_no_results"
+    NOT_CONFIGURED = "provider_not_configured"
+
+
 # ==============================================================================
 # Request Schemas
 # ==============================================================================
@@ -145,6 +156,10 @@ class TrafficContextSchema(BaseModel):
         DataAvailabilityStatus.AVAILABLE,
         description="Status of traffic provider computation.",
     )
+    coverage_status: ProviderCoverageStatus = Field(
+        ProviderCoverageStatus.SUPPORTED,
+        description="Detailed provider geographic coverage and operational status.",
+    )
     congestion_level: Optional[str] = Field(None, description="Congestion indicator (e.g. 'low', 'moderate', 'severe').")
     delay_minutes: Optional[float] = Field(None, ge=0.0, description="Estimated delay caused by traffic.")
     description: Optional[str] = Field(None, description="Traffic overview note.")
@@ -157,6 +172,10 @@ class WeatherContextSchema(BaseModel):
     status: DataAvailabilityStatus = Field(
         DataAvailabilityStatus.AVAILABLE,
         description="Status of weather provider computation.",
+    )
+    coverage_status: ProviderCoverageStatus = Field(
+        ProviderCoverageStatus.SUPPORTED,
+        description="Detailed provider geographic coverage and operational status.",
     )
     condition: Optional[str] = Field(None, description="Atmospheric state (e.g. 'Clear', 'Rain', 'Fog').")
     temperature_c: Optional[float] = Field(None, description="Ambient temperature in degrees Celsius.")
@@ -199,6 +218,21 @@ class LiveContextSchema(BaseModel):
     incidents: list[IncidentContextSchema] = Field(
         default_factory=list, description="Active incidents reported on route."
     )
+    incidents_status: DataAvailabilityStatus = Field(
+        DataAvailabilityStatus.UNAVAILABLE,
+        description="Status of the incident / disruption feed for this route.",
+    )
+    incidents_coverage: ProviderCoverageStatus = Field(
+        ProviderCoverageStatus.UNSUPPORTED_FOR_GEOGRAPHY,
+        description="Detailed provider geographic coverage and operational status for incidents.",
+    )
+    incidents_description: Optional[str] = Field(
+        None,
+        description="Descriptive explanation of incident feed availability or findings.",
+    )
+    weather_queried: bool = Field(False, description="Whether weather provider was queried.")
+    traffic_queried: bool = Field(False, description="Whether traffic provider was queried.")
+    incident_queried: bool = Field(False, description="Whether incident provider was queried.")
     providers: Optional[LiveContextProvidersSchema] = Field(
         None, description="Live providers consulted."
     )
@@ -469,6 +503,18 @@ class JourneyProvenanceSchema(BaseModel):
     weather_provider: Optional[str] = Field(None, description="Weather provider used (e.g. 'Open-Meteo', None).")
     traffic_provider: Optional[str] = Field(None, description="Traffic provider used (e.g. 'TfL', None).")
     incident_provider: Optional[str] = Field(None, description="Road incident provider used (e.g. 'TfL', None).")
+    traffic_coverage_status: Optional[ProviderCoverageStatus] = Field(
+        None, description="Traffic provider coverage status (e.g. supported, unsupported_for_geography, failed)."
+    )
+    incident_coverage_status: Optional[ProviderCoverageStatus] = Field(
+        None, description="Incident provider coverage status (e.g. supported, unsupported_for_geography, failed)."
+    )
+    weather_coverage_status: Optional[ProviderCoverageStatus] = Field(
+        None, description="Weather provider coverage status."
+    )
+    traffic_queried: bool = Field(False, description="Whether traffic provider was invoked.")
+    incident_queried: bool = Field(False, description="Whether incident provider was invoked.")
+    weather_queried: bool = Field(False, description="Whether weather provider was invoked.")
     live_data_available: bool = Field(False, description="Whether live weather/traffic feeds were connected.")
     historical_data_available: bool = Field(False, description="Whether historical model grounding was connected.")
     historical_coverage_region: Optional[str] = Field(None, description="Region covered by historical data.")

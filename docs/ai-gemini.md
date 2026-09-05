@@ -33,7 +33,7 @@ Configuration is managed in `backend/app/config.py`:
 
 ## 3. Strict Grounding Constraints
 
-The prompt engineering engine (`backend/app/services/journey_prompt_service.py`) injects **13 mandatory negative grounding rules** into the system prompt:
+The prompt engineering engine (`backend/app/services/journey_prompt_service.py`) injects **18 mandatory negative grounding rules** into the system prompt:
 
 1. **Strict Evidence Boundary:** Use *only* the supplied structured JSON evidence. Never invent facts, data sources, or figures.
 2. **Honest Availability Reporting:** Never infer unavailable data as available. If a feed is unmonitored or missing, state it explicitly.
@@ -45,9 +45,14 @@ The prompt engineering engine (`backend/app/services/journey_prompt_service.py`)
 8. **Hotspot Absence Semantics:** Never treat the absence of a DBSCAN hotspot (0 matched clusters) as proof that zero collisions have occurred.
 9. **Model Scope Separation:** Never treat Student A (Random Forest crash severity model) as a route-level prospective risk model.
 10. **Live Telemetry Integrity:** Never claim traffic or incident disruptions exist if the corresponding feeds are unavailable or unmonitored.
-11. **Explicit Limitation Recording:** If evidence is missing (e.g. traffic unmonitored outside London), explicitly record it in the `limitations` array.
+11. **Explicit Limitation Recording:** If evidence is missing (e.g. traffic unmonitored outside London or historical models out-of-coverage), explicitly record it under limitations and state it in findings.
 12. **Evidence-Linked Recommendations:** Actionable recommendations must connect directly to observed evidence (e.g. wet road grip, severe congestion, structural bottleneck).
 13. **Status Mirroring:** If the input deterministic assessment is marked `partial` or `unavailable`, the synthesis status must match accordingly.
+14. **Clean User-Facing Output:** Never output meta-commentary, prompt instructions, schema definitions, internal variable names, or lists of technical keywords.
+15. **Concise Narrative Summary:** The summary must be a concise 2-4 sentence narrative strictly grounded in verified evidence.
+16. **Provider Geographic Scoping Guardrail:** If a live provider (such as TfL traffic or disruptions) is marked `provider_unsupported_for_geography` or `unavailable`, NEVER interpret this as 'no incidents', 'no traffic', 'zero disruptions', or 'clear road'. Explicitly state that live traffic or disruption monitoring is unavailable for this geography.
+17. **Non-UK Journey Integrity:** Never claim or imply that a non-UK route (e.g. Paris) has no incidents or zero traffic simply because a UK-specific provider (TfL) does not cover it.
+18. **Partial Route Coverage Integrity:** If a live provider only partially covers a route (e.g. `provider_partially_supported`, such as London to Birmingham where TfL covers only the London portion), explicitly state that traffic and incident monitoring applies ONLY to the London portion of the route, and that the remainder of the corridor is unmonitored. Never claim or imply route-wide clear roads, zero incidents, or smooth traffic for the entire journey based solely on London-portion telemetry.
 
 ---
 

@@ -34,8 +34,25 @@ This document catalogs the scientific, mathematical, geographic, and infrastruct
 
 ### 2.2 Live Telemetry Geographic Scoping (TfL)
 
-- **London-Specific Scope:** Live traffic congestion and active road incident feeds are sourced from the **Transport for London (TfL) Unified API**.
-- **Rest of UK:** Outside the Greater London administrative boundary, live traffic delay and incident feeds are marked as `unmonitored` / `unavailable`. Vantage refuses to fabricate synthetic traffic data for unmonitored regions.
+- **London-Specific Scope:** Live traffic congestion and active road incident feeds are sourced strictly from the **Transport for London (TfL) Unified API**.
+- **Geographic Bounding Box:**
+  $$\text{Latitude: } [51.25^\circ\text{ N}, 51.72^\circ\text{ N}], \quad \text{Longitude: } [-0.55^\circ\text{ E}, 0.35^\circ\text{ E}]$$
+- **Rest of UK & International:** If a route does not intersect Greater London (e.g. Paris or Edinburgh), TfL endpoints are **not queried**. Telemetry status is explicitly marked `provider_unsupported_for_geography` (`unavailable`).
+- **Cross-Geographic Corridors (e.g. London to Birmingham):** If a route partially traverses Greater London, TfL endpoints are queried for the route, but telemetry is explicitly marked `provider_partially_supported` (`partial`). Telemetry and incident observations apply strictly to the London corridor portion; the remainder of the corridor beyond Greater London is unmonitored. Downstream safety assessments and AI synthesis are strictly forbidden from extrapolating London telemetry to the entire journey.
+- **Absence vs. Unmonitored Distinction:** Vantage strictly distinguishes between a monitored London route having zero disruptions (`provider_returned_no_results`, reporting 0 active incidents) and an unmonitored route outside London (`provider_unsupported_for_geography`). The system never falsely reports "0 incidents" or "clear roads" when a feed is unmonitored.
+
+### 2.3 Provider Coverage States (`ProviderCoverageStatus`)
+
+To eliminate ambiguity across all telemetry feeds, Vantage models upstream provider status using six explicit states:
+
+| Status Value | Meaning | Deterministic Behavior |
+| --- | --- | --- |
+| `provider_supported` | Provider is active, fully covers the route, and returned valid operational data. | Data incorporated into risk assessment as full-route evidence. |
+| `provider_partially_supported` | Provider monitors only a portion of the route (e.g. London segment of a London-Birmingham trip). | Data incorporated strictly as partial-route evidence; explicit limitations recorded. |
+| `provider_returned_no_results` | Provider fully monitors the route and verified zero active incidents/hazards. | Verified zero-incident evidence attached. |
+| `provider_unsupported_for_geography` | Route lies completely outside the provider's physical coverage area. Upstream API is skipped. | Explicit limitation recorded; no assumptions made. |
+| `provider_failed` | Provider was eligible but returned a network timeout, 5xx error, or parse failure. | Safe fallback applied; error recorded in limitations. |
+| `provider_not_configured` | API credentials or service configuration are not provided. | Provider skipped cleanly. |
 
 ---
 

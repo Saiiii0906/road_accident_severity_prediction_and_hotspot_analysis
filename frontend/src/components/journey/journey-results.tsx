@@ -630,8 +630,12 @@ export function JourneyResults({ response }: JourneyResultsProps) {
                   <span>Active Disruptions:</span>
                   <span>
                     {live_context.incidents.length > 0
-                      ? `${live_context.incidents.length} on corridor`
-                      : "None detected"}
+                      ? `${live_context.incidents.length} on corridor${safety_assessment.data_coverage?.incidents === "partial" ? " (London portion)" : ""}`
+                      : safety_assessment.data_coverage?.incidents === "unavailable"
+                        ? "Unavailable for geography"
+                        : safety_assessment.data_coverage?.incidents === "partial"
+                          ? "Partially monitored (London only)"
+                          : "None detected"}
                   </span>
                 </div>
                 {live_context.incidents.length > 0 && (

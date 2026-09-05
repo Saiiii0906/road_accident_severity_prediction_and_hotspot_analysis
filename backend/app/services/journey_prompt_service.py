@@ -40,6 +40,9 @@ CRITICAL GROUNDEDNESS & TRUTHFULNESS RULES:
 13. If the input deterministic assessment is "partial" or "unavailable", your output status must be "partial" or "unavailable" accordingly.
 14. The output must contain strictly user-facing, factual road safety intelligence. Never include meta-commentary, prompt instructions, schema definitions, internal variable names, or lists of technical keywords (e.g., 'schema', 'payload', 'validation', 'framework', 'pipeline', 'matrix').
 15. The summary must be a concise 2-4 sentence narrative overview strictly grounded in the verified evidence. Do not append metadata or keyword lists.
+16. If a live provider (such as TfL traffic or TfL disruptions) is marked as unsupported for the route's geography (coverage_status is 'provider_unsupported_for_geography') or unavailable, NEVER interpret this as 'no incidents', 'no traffic', 'zero disruptions', or 'clear road'. You must explicitly state that live traffic or disruption monitoring is unavailable for this geography.
+17. Never claim or imply that a non-UK route (e.g. Paris) has no incidents or zero traffic simply because a UK-specific provider (TfL) does not cover it.
+18. If a live provider only partially covers a route (coverage_status is 'provider_partially_supported' or status is 'partial', e.g. London to Birmingham where TfL covers only the London portion), you MUST explicitly state that traffic and incident monitoring applies ONLY to the London portion of the route, and that the remainder of the corridor is unmonitored. NEVER claim or imply route-wide clear roads, zero incidents, or smooth traffic for the entire journey based solely on London-portion telemetry.
 """
 
     @classmethod
@@ -71,6 +74,11 @@ CRITICAL GROUNDEDNESS & TRUTHFULNESS RULES:
                 "weather": (
                     {
                         "status": live.weather.status.value,
+                        "coverage_status": (
+                            live.weather.coverage_status.value
+                            if getattr(live.weather, "coverage_status", None)
+                            else "provider_supported"
+                        ),
                         "condition": live.weather.condition,
                         "temperature_c": live.weather.temperature_c,
                         "precipitation_probability": live.weather.precipitation_probability,
@@ -86,6 +94,11 @@ CRITICAL GROUNDEDNESS & TRUTHFULNESS RULES:
                 "traffic": (
                     {
                         "status": live.traffic.status.value,
+                        "coverage_status": (
+                            live.traffic.coverage_status.value
+                            if getattr(live.traffic, "coverage_status", None)
+                            else "provider_supported"
+                        ),
                         "congestion_level": live.traffic.congestion_level,
                         "delay_minutes": live.traffic.delay_minutes,
                         "corridor_monitored": live.traffic.corridor_monitored,
@@ -94,16 +107,34 @@ CRITICAL GROUNDEDNESS & TRUTHFULNESS RULES:
                     if live.traffic
                     else None
                 ),
-                "incidents": [
-                    {
-                        "incident_id": inc.incident_id,
-                        "description": inc.description,
-                        "severity": inc.severity,
-                        "category": inc.category,
-                        "location": inc.location,
-                    }
-                    for inc in live.incidents
-                ],
+                "incidents": {
+                    "status": (
+                        getattr(live, "incidents_status", None).value
+                        if getattr(live, "incidents_status", None)
+                        else ("available" if live.incidents else "unavailable")
+                    ),
+                    "coverage_status": (
+                        getattr(live, "incidents_coverage", None).value
+                        if getattr(live, "incidents_coverage", None)
+                        else "provider_supported"
+                    ),
+                    "description": getattr(live, "incidents_description", None) or (
+                        "Active disruptions reported."
+                        if live.incidents
+                        else "No active road disruptions reported on corridor."
+                    ),
+                    "active_count": len(live.incidents),
+                    "items": [
+                        {
+                            "incident_id": inc.incident_id,
+                            "description": inc.description,
+                            "severity": inc.severity,
+                            "category": inc.category,
+                            "location": inc.location,
+                        }
+                        for inc in live.incidents
+                    ],
+                },
             },
             "historical_evidence": {
                 "status": historical.status.value,

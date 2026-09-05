@@ -273,10 +273,36 @@ The primary end-to-end analytical pipeline evaluating origin-to-destination corr
 
 1. **Geocoding:** Resolves `source` and `destination` queries into coordinates via Nominatim.
 2. **Routing:** Requests driving route, step-by-step corridor geometry, and duration via OSRM.
-3. **Live Telemetry:** Queries Open-Meteo for atmospheric conditions and TfL for traffic delays and incidents.
-4. **Historical Corridor Matching:** Buffers the route polyline (1,000m) against DBSCAN clusters (`Student B`) and GNN segments (`Student C`).
+3. **Provider Geographic Scoping & Live Telemetry:**
+   - Tests route intersection against provider bounding boxes (`ProviderCoverageService`).
+   - Open-Meteo provides atmospheric telemetry globally.
+   - TfL traffic delays and incident feeds are queried **only** if the route intersects Greater London `[51.25, 51.72] x [-0.55, 0.35]`.
+   - Outside Greater London (e.g. Paris or Edinburgh), TfL calls are skipped and marked `provider_unsupported_for_geography`.
+   - Partially traversing routes (e.g. London to Birmingham) are marked `provider_partially_supported`; TfL data covers the London portion only.
+4. **Historical Corridor Matching:**
+   - Evaluates route intersection with Great Britain boundary `[50.0, 60.5] x [-6.5, 2.0]`.
+   - Within GB, buffers the route polyline (1,000m) against DBSCAN clusters (`Student B`) and GNN segments (`Student C`). Outside GB, marked `out_of_coverage`.
 5. **Deterministic Assessment:** Evaluates verified hazard factors and assigns categorical severity tiers (`overall_score` is strictly `None`).
-6. **Gemini Synthesis:** Synthesizes structured narrative, takeaways, and precautions using Gemini 1.5/2.5 Flash.
+6. **Gemini Synthesis:** Synthesizes structured narrative, takeaways, and precautions using Gemini 1.5/2.5 Flash, abiding by 18 strict grounding rules.
+
+#### Key Telemetry & Provenance Fields (`ProviderCoverageStatus`)
+
+To prevent falsely conflating "unmonitored" regions with "zero incidents", the API returns explicit provider status values:
+
+- `provider_supported`: Provider active, fully covers route, and returned data.
+- `provider_partially_supported`: Provider monitors only a portion of the route (e.g. London portion of London-Birmingham).
+- `provider_returned_no_results`: Provider fully monitored the route and verified zero active incidents.
+- `provider_unsupported_for_geography`: Route outside physical coverage area (e.g. TfL queried for Paris).
+- `provider_failed`: Provider was eligible but failed due to network error, timeout, or HTTP 5xx.
+- `provider_not_configured`: Provider credentials or settings not supplied.
+
+These states are reported in:
+- `live_context.incidents_coverage`
+- `live_context.traffic.coverage_status`
+- `live_context.weather.coverage_status`
+- `provenance.incident_coverage_status`
+- `provenance.traffic_coverage_status`
+- `provenance.weather_coverage_status`
 
 #### Standard Error Responses
 

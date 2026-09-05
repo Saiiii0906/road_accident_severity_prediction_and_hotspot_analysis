@@ -88,18 +88,22 @@ The user provides four core parameters:
    - Retrieves the optimal vehicle trajectory, turn-by-turn road segment names, overall distance in kilometers, estimated duration in minutes, and an encoded polyline geometry.
    - Decodes the polyline into a sequence of latitude/longitude coordinates.
 
-### Stage 3: Live Telemetry Context
+### Stage 3: Live Telemetry Context & Provider Scoping
 
 1. **Atmospheric Forecast (`WeatherService`):**
-   - Queries Open-Meteo for hourly forecast metrics along the route corridor matching the travel date and time.
+   - Queries Open-Meteo for hourly forecast metrics along the route corridor matching the travel date and time (global geographic coverage).
    - Extracts temperature ($^\circ\text{C}$), precipitation (mm), visibility (meters), wind speed (km/h), and precipitation probability (%).
    - Flags hazardous driving conditions (e.g. heavy rain $\ge 4\text{ mm/h}$, freezing temperatures $\le 0^\circ\text{C}$, low visibility $\le 1,000\text{ m}$).
-2. **Traffic Congestion (`TrafficService`):**
-   - Queries the Transport for London (TfL) Unified API for real-time corridor status.
-   - Calculates traffic delay multipliers and congestion severities along major corridors (e.g. A4, A40, M4).
-   - If the route is outside London, traffic monitoring is marked `unmonitored` / `unavailable`.
-3. **Active Road Incidents (`IncidentService`):**
-   - Queries the TfL Road Disruption feed for active roadworks, lane closures, emergency utility works, and closures intersecting the route corridor.
+2. **Traffic Congestion (`TrafficService` & `ProviderCoverageService`):**
+   - Evaluates route coordinates against Greater London bounding coordinates $[51.25^\circ\text{ N}, 51.72^\circ\text{ N}] \times [-0.55^\circ\text{ E}, 0.35^\circ\text{ E}]$.
+   - **London-Only:** For routes fully within London, TfL is queried and marked `provider_supported` (or `provider_returned_no_results`).
+   - **Cross-Geographic:** For routes partially traversing London (e.g. London to Birmingham), TfL is queried for the London portion and marked `provider_partially_supported` (`partial`). Telemetry applies strictly to the London section.
+   - **Non-London:** For routes outside Greater London (e.g. Paris or Manchester), TfL is **never invoked**, and the traffic subsystem is marked `provider_unsupported_for_geography`.
+3. **Active Road Incidents (`IncidentService` & `ProviderCoverageService`):**
+   - Evaluates route coordinates against Greater London bounding coordinates.
+   - For routes outside Greater London, TfL is **never invoked**, and disruptions are marked `provider_unsupported_for_geography` (`TfL disruption data unavailable for this geography.`).
+   - For routes partially traversing London, marked `provider_partially_supported`; disruption reports apply solely to the London portion, and outer corridor is unmonitored.
+   - For eligible full-London routes, queries the TfL Road Disruption feed. A legitimate empty result is classified as `provider_returned_no_results`, which is strictly distinguished from unsupported geography.
 
 ### Stage 4: Historical Corridor Alignment (`CorridorMatchingService`)
 

@@ -405,7 +405,14 @@ export function exportJourneySafetyPdf(response: JourneyAnalyzeResponse): jsPDF 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139);
-    doc.text("No active road incidents or major closures reported on route.", margin + 3, y + 8.5);
+    const incUnavailable = safety_assessment?.data_coverage?.incidents === "unavailable";
+    const incPartial = safety_assessment?.data_coverage?.incidents === "partial";
+    const incText = incUnavailable
+      ? "TfL disruption data unavailable for this geography."
+      : incPartial
+        ? "TfL disruption data covers Greater London portion only; outer corridor is unmonitored."
+        : "No active road incidents or major closures reported on route.";
+    doc.text(incText, margin + 3, y + 8.5);
     y += 15;
   } else {
     // Dynamic height calculation based on actual incident descriptions
