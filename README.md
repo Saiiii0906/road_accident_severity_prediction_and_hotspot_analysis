@@ -4,6 +4,28 @@
 
 ---
 
+## 🌐 Live Production Deployment
+
+Vantage is currently deployed live on Google Cloud Platform with full HTTPS and automatic process persistence:
+
+| Access Point | Link | Description |
+| :--- | :--- | :--- |
+| **Public HTTPS Application** | [**corpus-driver-shipped-tile.trycloudflare.com**](https://corpus-driver-shipped-tile.trycloudflare.com) | Live Web Interface (Cloudflare Edge Tunnel) |
+| **Direct Server IP** | [`http://35.209.57.2`](http://35.209.57.2) | Google Cloud VM Direct HTTP Endpoint |
+| **Interactive API Docs** | [**/docs (Swagger UI)**](https://corpus-driver-shipped-tile.trycloudflare.com/docs) | OpenAPI interactive documentation and test sandbox |
+| **Backend Healthcheck** | [**/health**](https://corpus-driver-shipped-tile.trycloudflare.com/health) | Real-time system and model health status |
+
+### Live Application Modules
+- [**Dashboard & Overview**](https://corpus-driver-shipped-tile.trycloudflare.com/dashboard)
+- [**Journey Safety Analysis**](https://corpus-driver-shipped-tile.trycloudflare.com/journey-safety)
+- [**Severity Prediction (Student A 8.37 GB RF)**](https://corpus-driver-shipped-tile.trycloudflare.com/severity-prediction)
+- [**Hotspot Explorer (Student B DBSCAN)**](https://corpus-driver-shipped-tile.trycloudflare.com/hotspot-explorer)
+- [**Road Risk Analysis (Student C GNN)**](https://corpus-driver-shipped-tile.trycloudflare.com/road-risk-analysis)
+- [**AI Infrastructure Report (Grounded Gemini)**](https://corpus-driver-shipped-tile.trycloudflare.com/ai-infrastructure-report)
+- [**Analysis History**](https://corpus-driver-shipped-tile.trycloudflare.com/history)
+
+---
+
 ## Key Capabilities
 
 - **Journey Safety Analysis:** Multi-source route corridor evaluation uniting real-time geocoding, route planning, atmospheric conditions, live traffic congestion, active road disruptions, historical accident clusters, and structural network risks.
