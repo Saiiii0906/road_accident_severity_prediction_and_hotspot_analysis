@@ -217,5 +217,7 @@ For a full treatment, see [System Limitations](docs/limitations.md).
 ## Project Status
 
 - **Version:** `1.0.0`
-- **Deployment Status:** Local / Development / Staging Ready. Containerized cloud deployment architecture is planned and requires addressing the 7.8 GB model artifact footprint.
+- **Deployment Status:** **LIVE IN PRODUCTION** on Google Cloud Platform (`e2-highmem-4`, 32 GB RAM) with Cloudflare Quick Tunnel and PM2 process persistence.
+- **Credit Lifecycle Guard:** Automated 10-day shutdown timer scheduled for `2026-09-16 23:59 UTC` to preserve GCP free trial credits.
 - **License:** MIT License
+
