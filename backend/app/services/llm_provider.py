@@ -362,21 +362,19 @@ class GeminiProvider(LLMProvider):
                 raise LLMValidationError("Gemini returned an empty response with no candidates.")
 
             content_parts = candidates[0].get("content", {}).get("parts", [])
-            text_part: Optional[str] = None
+            text_parts: list[str] = []
             for part in content_parts:
                 if isinstance(part, dict) and "text" in part and not part.get("thought", False):
-                    text_part = part["text"]
-                    break
-            if text_part is None:
+                    text_parts.append(part["text"])
+            if not text_parts:
                 for part in content_parts:
                     if isinstance(part, dict) and "text" in part:
-                        text_part = part["text"]
-                        break
+                        text_parts.append(part["text"])
 
-            if text_part is None:
+            if not text_parts:
                 raise LLMValidationError("Gemini response missing text part.")
 
-            raw_text = text_part.strip()
+            raw_text = "".join(text_parts).strip()
             if raw_text.startswith("```json"):
                 raw_text = raw_text[7:]
             if raw_text.startswith("```"):
