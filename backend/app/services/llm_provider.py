@@ -228,7 +228,7 @@ class GeminiProvider(LLMProvider):
             ],
             "generationConfig": {
                 "temperature": self.temperature,
-                "maxOutputTokens": 2048,
+                "maxOutputTokens": 8192,
                 "response_mime_type": "application/json",
                 "response_schema": gemini_schema,
             },
