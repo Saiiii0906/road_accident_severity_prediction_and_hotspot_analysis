@@ -37,19 +37,35 @@ export class ApiError extends Error {
  * Returns undefined if not set.
  */
 export function getApiBaseUrl(): string | undefined {
-  // Check for environment variable first
+  // If running in the browser, determine the correct origin to avoid Mixed Content / CORS
+  if (typeof window !== "undefined" && window.location?.origin) {
+    // If explicit runtime boot config is provided, check it first
+    const runtimeValue = window.__DSH_BOOT__?.apiBaseUrl;
+    if (typeof runtimeValue === "string" && runtimeValue.length > 0) {
+      return runtimeValue.replace(/\/$/, "");
+    }
+
+    const envValue = import.meta.env?.["VITE_API_BASE_URL"];
+    // If the page was loaded over HTTPS, never use an insecure HTTP base URL (prevents Mixed Content)
+    if (
+      typeof envValue === "string" &&
+      envValue.length > 0 &&
+      (!window.location.protocol.startsWith("https") || envValue.startsWith("https://"))
+    ) {
+      return envValue.replace(/\/$/, "");
+    }
+
+    // Default to current browser origin (same-origin reverse proxy / tunnel)
+    return window.location.origin;
+  }
+
+  // Fallback for SSR / Node environment
   const envValue = import.meta.env?.["VITE_API_BASE_URL"];
   if (typeof envValue === "string" && envValue.length > 0) {
     return envValue.replace(/\/$/, "");
   }
 
-  // Fallback to runtime configuration injected via window.__DSH_BOOT__
-  const runtimeValue = window.__DSH_BOOT__?.apiBaseUrl;
-  if (typeof runtimeValue === "string" && runtimeValue.length > 0) {
-    return runtimeValue.replace(/\/$/, "");
-  }
-
-  return undefined;
+  return "http://127.0.0.1:8000";
 }
 
 /**
