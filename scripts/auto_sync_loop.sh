@@ -101,9 +101,8 @@ while true; do
             # 3. Pull and update on GCP VM
             log_info "Updating GCP VM ($REMOTE_HOST)..."
             SSH_CMD="cd $REMOTE_REPO_PATH && \
-                sudo -u yahydhksidh git stash 2>/dev/null && \
-                sudo -u yahydhksidh git pull origin main && \
-                sudo -u yahydhksidh git stash pop 2>/dev/null || true"
+                git fetch origin main && \
+                git reset --hard origin/main"
 
             if ssh "$REMOTE_HOST" "$SSH_CMD"; then
                 log_success "Pulled latest commits on GCP VM!"
