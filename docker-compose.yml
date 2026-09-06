@@ -26,6 +26,8 @@ services:
     volumes:
       # Mount the local 7.80 GB model file into the container as read-only
       - ./student_A/models/accident_severity_model.pkl:/app/student_A/models/accident_severity_model.pkl:ro
+      # Mount backend code so code updates are reflected immediately
+      - ./backend:/app/backend:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
