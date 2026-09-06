@@ -176,7 +176,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser. Interactive API documentation is available at `http://localhost:8000/docs`.
+Open `http://localhost:5173` in your browser (or access the live production instance at [https://corpus-driver-shipped-tile.trycloudflare.com](https://corpus-driver-shipped-tile.trycloudflare.com)). Interactive API documentation is available locally at `http://localhost:8000/docs` (or live at [https://corpus-driver-shipped-tile.trycloudflare.com/docs](https://corpus-driver-shipped-tile.trycloudflare.com/docs)).
 
 ---
 
