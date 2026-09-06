@@ -1,28 +1,37 @@
 # Vantage — AI-Powered Road Safety & Traffic Intelligence
 
-**Vantage** is an advanced road safety intelligence and traffic risk analysis platform. It combines empirical machine learning models, spatial clustering, road-network graph analysis, real-time atmospheric and traffic telemetry, and grounded generative AI synthesis to deliver explainable, evidence-backed journey safety assessments and transport infrastructure insights.
+[![Live Application](https://img.shields.io/badge/Live%20App-Online%20(HTTPS)-success?style=for-the-badge&logo=cloudflare&logoColor=white)](https://corpus-driver-shipped-tile.trycloudflare.com)
+[![Direct Server](https://img.shields.io/badge/GCP%20VM-35.209.57.2-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](http://35.209.57.2)
+[![API Documentation](https://img.shields.io/badge/Swagger-Interactive%20API%20Docs-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://corpus-driver-shipped-tile.trycloudflare.com/docs)
+[![System Health](https://img.shields.io/badge/Health-Passing%20(200%20OK)-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](https://corpus-driver-shipped-tile.trycloudflare.com/health)
+
+> ### 🌐 Live Production Deployment
+> - 🔗 **Public HTTPS Application:** [**https://corpus-driver-shipped-tile.trycloudflare.com**](https://corpus-driver-shipped-tile.trycloudflare.com)
+> - 🖥️ **Direct Google Cloud Server:** [**http://35.209.57.2**](http://35.209.57.2)
+> - 📖 **Interactive Swagger API Docs:** [**https://corpus-driver-shipped-tile.trycloudflare.com/docs**](https://corpus-driver-shipped-tile.trycloudflare.com/docs)
+> - 🩺 **Backend Healthcheck:** [**https://corpus-driver-shipped-tile.trycloudflare.com/health**](https://corpus-driver-shipped-tile.trycloudflare.com/health)
+>
+> *Hosted on Google Cloud Platform Compute Engine (`e2-highmem-4`, 32 GB RAM) with Cloudflare Quick Tunnel, Nginx, and PM2 process management.*
 
 ---
 
-## 🌐 Live Production Deployment
+## 🚀 Live Application Modules
 
-Vantage is currently deployed live on Google Cloud Platform with full HTTPS and automatic process persistence:
+Access any part of the live production system directly:
 
-| Access Point | Link | Description |
+| Module | Live Direct Link | Description |
 | :--- | :--- | :--- |
-| **Public HTTPS Application** | [**corpus-driver-shipped-tile.trycloudflare.com**](https://corpus-driver-shipped-tile.trycloudflare.com) | Live Web Interface (Cloudflare Edge Tunnel) |
-| **Direct Server IP** | [`http://35.209.57.2`](http://35.209.57.2) | Google Cloud VM Direct HTTP Endpoint |
-| **Interactive API Docs** | [**/docs (Swagger UI)**](https://corpus-driver-shipped-tile.trycloudflare.com/docs) | OpenAPI interactive documentation and test sandbox |
-| **Backend Healthcheck** | [**/health**](https://corpus-driver-shipped-tile.trycloudflare.com/health) | Real-time system and model health status |
+| **Dashboard** | [**Open Dashboard**](https://corpus-driver-shipped-tile.trycloudflare.com/dashboard) | Main telemetry overview, quick actions, and system monitors |
+| **Journey Safety Analysis** | [**Open Journey Safety**](https://corpus-driver-shipped-tile.trycloudflare.com/journey-safety) | Multi-source corridor evaluation, route telemetry, and risk assessment |
+| **Severity Prediction** | [**Open Severity Prediction**](https://corpus-driver-shipped-tile.trycloudflare.com/severity-prediction) | Real 8.37 GB Random Forest model predicting post-collision severity |
+| **Hotspot Explorer** | [**Open Hotspot Explorer**](https://corpus-driver-shipped-tile.trycloudflare.com/hotspot-explorer) | In-memory DBSCAN spatial clustering over 3,700+ UK accident clusters |
+| **Road Risk Analysis** | [**Open Road Risk**](https://corpus-driver-shipped-tile.trycloudflare.com/road-risk-analysis) | Graph Neural Network (GNN) modeling 13,900+ UK road segments |
+| **AI Infrastructure Report** | [**Open AI Report**](https://corpus-driver-shipped-tile.trycloudflare.com/ai-infrastructure-report) | Grounded Gemini-powered synthesis for transport safety decisions |
+| **Analysis History** | [**Open History**](https://corpus-driver-shipped-tile.trycloudflare.com/history) | Saved assessments, previous journey queries, and deterministic PDF export |
 
-### Live Application Modules
-- [**Dashboard & Overview**](https://corpus-driver-shipped-tile.trycloudflare.com/dashboard)
-- [**Journey Safety Analysis**](https://corpus-driver-shipped-tile.trycloudflare.com/journey-safety)
-- [**Severity Prediction (Student A 8.37 GB RF)**](https://corpus-driver-shipped-tile.trycloudflare.com/severity-prediction)
-- [**Hotspot Explorer (Student B DBSCAN)**](https://corpus-driver-shipped-tile.trycloudflare.com/hotspot-explorer)
-- [**Road Risk Analysis (Student C GNN)**](https://corpus-driver-shipped-tile.trycloudflare.com/road-risk-analysis)
-- [**AI Infrastructure Report (Grounded Gemini)**](https://corpus-driver-shipped-tile.trycloudflare.com/ai-infrastructure-report)
-- [**Analysis History**](https://corpus-driver-shipped-tile.trycloudflare.com/history)
+---
+
+**Vantage** is an advanced road safety intelligence and traffic risk analysis platform. It combines empirical machine learning models, spatial clustering, road-network graph analysis, real-time atmospheric and traffic telemetry, and grounded generative AI synthesis to deliver explainable, evidence-backed journey safety assessments and transport infrastructure insights.
 
 ---
 
